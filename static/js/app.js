@@ -28,7 +28,7 @@ function renderMarkdown(text) {
         template.content.querySelectorAll('script,iframe,object,embed,form').forEach(el => el.remove());
         template.content.querySelectorAll('*').forEach(el => {
             for (const attr of [...el.attributes]) {
-                if (attr.name.startsWith('on') || attr.value.startsWith('javascript:')) {
+                if (attr.name.startsWith('on') || attr.value.trim().toLowerCase().startsWith('javascript:')) {
                     el.removeAttribute(attr.name);
                 }
             }
