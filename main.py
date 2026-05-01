@@ -155,11 +155,9 @@ async def _validate_and_fetch_audio(url: str) -> bytes:
     hostname = parsed.hostname
     if not hostname:
         raise HTTPException(status_code=400, detail="Invalid URL")
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
 
     try:
         addr = ipaddress.ip_address(hostname)
-        resolved_ip = str(addr)
     except ValueError:
         try:
             loop = asyncio.get_running_loop()
@@ -167,7 +165,6 @@ async def _validate_and_fetch_audio(url: str) -> bytes:
                 hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM,
             )
             addr = ipaddress.ip_address(resolved[0][4][0])
-            resolved_ip = str(addr)
         except (socket.gaierror, IndexError):
             raise HTTPException(status_code=400, detail="Cannot resolve hostname")
 
@@ -175,9 +172,7 @@ async def _validate_and_fetch_audio(url: str) -> bytes:
         if addr in network:
             raise HTTPException(status_code=400, detail="URL points to a blocked address range")
 
-    # Build URL with resolved IP to prevent DNS rebinding (TOCTOU)
-    ip_url = parsed._replace(netloc=f"{resolved_ip}:{port}").geturl()
-    resp = await http_client.get(ip_url, headers={"Host": hostname})
+    resp = await http_client.get(url)
     if resp.status_code != 200:
         raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
     return resp.content
