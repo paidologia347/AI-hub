@@ -147,24 +147,40 @@ _BLOCKED_NETWORKS = [
 ]
 
 
-def _validate_url(url: str) -> None:
+async def _validate_and_fetch_audio(url: str) -> bytes:
+    """Validate URL against SSRF and fetch content using the resolved IP."""
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
     hostname = parsed.hostname
     if not hostname:
         raise HTTPException(status_code=400, detail="Invalid URL")
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
     try:
         addr = ipaddress.ip_address(hostname)
+        resolved_ip = str(addr)
     except ValueError:
         try:
-            resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            loop = asyncio.get_running_loop()
+            resolved = await loop.getaddrinfo(
+                hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM,
+            )
             addr = ipaddress.ip_address(resolved[0][4][0])
+            resolved_ip = str(addr)
         except (socket.gaierror, IndexError):
             raise HTTPException(status_code=400, detail="Cannot resolve hostname")
+
     for network in _BLOCKED_NETWORKS:
         if addr in network:
             raise HTTPException(status_code=400, detail="URL points to a blocked address range")
+
+    # Build URL with resolved IP to prevent DNS rebinding (TOCTOU)
+    ip_url = parsed._replace(netloc=f"{resolved_ip}:{port}").geturl()
+    resp = await http_client.get(ip_url, headers={"Host": hostname})
+    if resp.status_code != 200:
+        raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
+    return resp.content
 
 
 # ===== Helper: Native API headers =====
@@ -287,11 +303,8 @@ async def multimodal_chat(req: MultimodalRequest):
     if req.image_url:
         content.append({"type": "image_url", "image_url": {"url": req.image_url}})
     if req.audio_url:
-        _validate_url(req.audio_url)
-        audio_resp = await http_client.get(req.audio_url)
-        if audio_resp.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
-        audio_b64 = base64.b64encode(audio_resp.content).decode("utf-8")
+        audio_bytes = await _validate_and_fetch_audio(req.audio_url)
+        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
         ext = req.audio_url.rsplit(".", 1)[-1].lower() if "." in req.audio_url else "mp3"
         fmt = ext if ext in ("mp3", "wav", "flac", "ogg", "m4a", "aac") else "mp3"
         content.append({"type": "input_audio", "input_audio": {"data": audio_b64, "format": fmt}})
