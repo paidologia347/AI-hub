@@ -228,6 +228,7 @@ async function generateTTS() {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const audio = document.getElementById('tts-audio');
+        if (audio.src && audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
         audio.src = url;
         document.getElementById('tts-result').classList.remove('hidden');
         audio.play();
