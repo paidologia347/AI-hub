@@ -200,7 +200,8 @@ async def text_to_speech(req: TTSRequest):
 
         result = resp.json()
         output = result.get("output", {})
-        audio_url = output.get("audio", "")
+        audio_data = output.get("audio", {})
+        audio_url = audio_data.get("url", "") if isinstance(audio_data, dict) else audio_data
 
         if audio_url:
             audio_resp = await http_client.get(audio_url)
