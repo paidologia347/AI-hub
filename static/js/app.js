@@ -134,9 +134,9 @@ async function sendChat() {
         let endpoint = '/api/chat';
         let body = { message, model, system_prompt: systemPrompt, temperature, stream: true };
 
-        if (imageUrl && model === 'qwen3-omni-flash') {
+        if (model === 'qwen3-omni-flash') {
             endpoint = '/api/multimodal';
-            body = { message, image_url: imageUrl, model, stream: true };
+            body = { message, image_url: imageUrl || '', model, stream: true };
         } else if (imageUrl) {
             endpoint = '/api/vision';
             body = { message, image_url: imageUrl, model: 'qwen3.6-plus', stream: true };
