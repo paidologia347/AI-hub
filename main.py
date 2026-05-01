@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from urllib.parse import urlparse
 
+import httpcore
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
@@ -147,8 +148,46 @@ _BLOCKED_NETWORKS = [
 ]
 
 
+class _PinnedDNSBackend(httpcore.AsyncNetworkBackend):
+    """Network backend that routes TCP connections to a pre-validated IP.
+
+    httpcore calls ``connect_tcp(origin_host, port)`` and then
+    ``start_tls(server_hostname=origin_host)``.  By overriding only
+    ``connect_tcp`` to connect to the already-resolved IP, TLS still
+    verifies the certificate against the original hostname (SNI is
+    preserved), while the actual TCP connection goes to the pinned IP.
+    This closes the TOCTOU / DNS-rebinding gap.
+    """
+
+    def __init__(self, ip_address: str) -> None:
+        self._ip = ip_address
+        self._backend = httpcore.AnyIOBackend()
+
+    async def connect_tcp(
+        self, host, port, timeout=None, local_address=None, socket_options=None,
+    ):
+        return await self._backend.connect_tcp(
+            self._ip, port, timeout=timeout,
+            local_address=local_address, socket_options=socket_options,
+        )
+
+    async def connect_unix_socket(self, path, timeout=None, socket_options=None):
+        return await self._backend.connect_unix_socket(
+            path, timeout=timeout, socket_options=socket_options,
+        )
+
+    async def sleep(self, seconds):
+        await self._backend.sleep(seconds)
+
+
 async def _validate_and_fetch_audio(url: str) -> bytes:
-    """Validate URL against SSRF and fetch content using the resolved IP."""
+    """Validate URL against SSRF and fetch content via the resolved IP.
+
+    DNS is resolved once, the resulting IP is checked against
+    ``_BLOCKED_NETWORKS``, and the HTTP request is routed through a
+    pinned-DNS transport so that httpx/httpcore connect to the
+    already-validated address (no second DNS lookup).
+    """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
@@ -172,10 +211,28 @@ async def _validate_and_fetch_audio(url: str) -> bytes:
         if addr in network:
             raise HTTPException(status_code=400, detail="URL points to a blocked address range")
 
-    resp = await http_client.get(url)
-    if resp.status_code != 200:
-        raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
-    return resp.content
+    backend = _PinnedDNSBackend(str(addr))
+    pool = httpcore.AsyncConnectionPool(network_backend=backend)
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        target = (parsed.path or "/").encode()
+        if parsed.query:
+            target += b"?" + parsed.query.encode()
+        response = await pool.request(
+            method=b"GET",
+            url=httpcore.URL(
+                scheme=parsed.scheme.encode(),
+                host=hostname.encode(),
+                port=port,
+                target=target,
+            ),
+            headers=[(b"host", hostname.encode()), (b"user-agent", b"AI-Hub/3.0")],
+        )
+        if response.status != 200:
+            raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
+        return response.content
+    finally:
+        await pool.aclose()
 
 
 # ===== Helper: Native API headers =====
