@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import base64
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -250,7 +251,13 @@ async def multimodal_chat(req: MultimodalRequest):
     if req.image_url:
         content.append({"type": "image_url", "image_url": {"url": req.image_url}})
     if req.audio_url:
-        content.append({"type": "input_audio", "input_audio": {"data": req.audio_url, "format": "mp3"}})
+        audio_resp = await http_client.get(req.audio_url)
+        if audio_resp.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
+        audio_b64 = base64.b64encode(audio_resp.content).decode("utf-8")
+        ext = req.audio_url.rsplit(".", 1)[-1].lower() if "." in req.audio_url else "mp3"
+        fmt = ext if ext in ("mp3", "wav", "flac", "ogg", "m4a", "aac") else "mp3"
+        content.append({"type": "input_audio", "input_audio": {"data": audio_b64, "format": fmt}})
     content.append({"type": "text", "text": req.message})
 
     messages = [{"role": "user", "content": content}]
