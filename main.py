@@ -230,6 +230,9 @@ async def _validate_and_fetch_audio(url: str) -> bytes:
         )
         if response.status != 200:
             raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
+        max_size = 50 * 1024 * 1024  # 50 MB
+        if len(response.content) > max_size:
+            raise HTTPException(status_code=400, detail="Audio file too large (max 50 MB)")
         return response.content
     finally:
         await pool.aclose()
@@ -357,7 +360,8 @@ async def multimodal_chat(req: MultimodalRequest):
     if req.audio_url:
         audio_bytes = await _validate_and_fetch_audio(req.audio_url)
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
-        ext = req.audio_url.rsplit(".", 1)[-1].lower() if "." in req.audio_url else "mp3"
+        audio_path = urlparse(req.audio_url).path
+        ext = audio_path.rsplit(".", 1)[-1].lower() if "." in audio_path else "mp3"
         fmt = ext if ext in ("mp3", "wav", "flac", "ogg", "m4a", "aac") else "mp3"
         content.append({"type": "input_audio", "input_audio": {"data": audio_b64, "format": fmt}})
     content.append({"type": "text", "text": req.message})
