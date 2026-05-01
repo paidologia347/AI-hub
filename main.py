@@ -204,6 +204,8 @@ async def text_to_speech(req: TTSRequest):
 
         if audio_url:
             audio_resp = await http_client.get(audio_url)
+            if audio_resp.status_code != 200:
+                raise HTTPException(status_code=502, detail="Failed to download generated audio")
             return StreamingResponse(
                 iter([audio_resp.content]),
                 media_type="audio/mpeg",

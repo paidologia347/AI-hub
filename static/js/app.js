@@ -84,7 +84,7 @@ function setPrompt(text) {
 }
 
 function handleChatKeydown(e) {
-    if (e.key === 'Enter' && (e.ctrlKey || !e.shiftKey)) {
+    if (e.key === 'Enter' && e.ctrlKey) {
         e.preventDefault();
         sendChat();
     }
