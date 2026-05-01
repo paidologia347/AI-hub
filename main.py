@@ -2,8 +2,11 @@ import os
 import json
 import asyncio
 import base64
+import ipaddress
+import socket
 from contextlib import asynccontextmanager
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 from dotenv import load_dotenv
@@ -131,6 +134,39 @@ class ContentRequest(BaseModel):
     language: str = "id"
 
 
+# ===== Helper: URL validation (SSRF protection) =====
+
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fd00::/8"),
+]
+
+
+def _validate_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL")
+    try:
+        addr = ipaddress.ip_address(hostname)
+    except ValueError:
+        try:
+            resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            addr = ipaddress.ip_address(resolved[0][4][0])
+        except (socket.gaierror, IndexError):
+            raise HTTPException(status_code=400, detail="Cannot resolve hostname")
+    for network in _BLOCKED_NETWORKS:
+        if addr in network:
+            raise HTTPException(status_code=400, detail="URL points to a blocked address range")
+
+
 # ===== Helper: Native API headers =====
 
 def native_headers(async_mode: bool = False) -> dict:
@@ -251,6 +287,7 @@ async def multimodal_chat(req: MultimodalRequest):
     if req.image_url:
         content.append({"type": "image_url", "image_url": {"url": req.image_url}})
     if req.audio_url:
+        _validate_url(req.audio_url)
         audio_resp = await http_client.get(req.audio_url)
         if audio_resp.status_code != 200:
             raise HTTPException(status_code=400, detail="Failed to fetch audio from URL")
