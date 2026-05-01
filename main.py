@@ -535,6 +535,8 @@ async def asr_status(task_id: str):
                         response["transcript"] = ""
                 else:
                     response["transcript"] = ""
+            else:
+                response["transcript"] = ""
 
         if status == "FAILED":
             response["error"] = output.get("message", "Task failed")
