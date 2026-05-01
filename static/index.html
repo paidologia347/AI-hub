@@ -21,7 +21,7 @@
                 </div>
                 <div class="brand-text">
                     <span class="brand-name">Local Node</span>
-                    <span class="brand-sub">AI Hub v2.0</span>
+                    <span class="brand-sub">AI Hub v3.0</span>
                 </div>
             </div>
 
@@ -37,6 +37,10 @@
                 <a class="nav-item" data-page="video-engine" onclick="switchPage('video-engine')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                     <span>Video Engine</span>
+                </a>
+                <a class="nav-item" data-page="audio-lab" onclick="switchPage('audio-lab')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/></svg>
+                    <span>Audio Lab</span>
                 </a>
                 <a class="nav-item" data-page="api-management" onclick="switchPage('api-management')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
@@ -70,6 +74,7 @@
                         <button class="topbar-tab active" data-page="text-generation" onclick="switchPage('text-generation')">Text Generation</button>
                         <button class="topbar-tab" data-page="image-studio" onclick="switchPage('image-studio')">Image Studio</button>
                         <button class="topbar-tab" data-page="video-engine" onclick="switchPage('video-engine')">Video Engine</button>
+                        <button class="topbar-tab" data-page="audio-lab" onclick="switchPage('audio-lab')">Audio Lab</button>
                     </div>
                 </div>
                 <div class="topbar-right">
@@ -91,14 +96,19 @@
                         <div class="config-group">
                             <label class="config-label">MODEL SELECTOR</label>
                             <select id="chat-model" class="nexus-select">
-                                <option value="qwen-plus">Qwen Plus</option>
-                                <option value="qwen-max">Qwen Max</option>
-                                <option value="qwen-turbo">Qwen Turbo</option>
-                                <option value="qwen3-235b-a22b">Qwen3 235B</option>
-                                <option value="qwen3-32b">Qwen3 32B</option>
-                                <option value="qwen3-14b">Qwen3 14B</option>
-                                <option value="qwq-plus">QwQ Plus (Reasoning)</option>
-                                <option value="qwen3-coder-plus">Qwen3 Coder Plus</option>
+                                <optgroup label="Text Models">
+                                    <option value="qwen-plus">Qwen Plus</option>
+                                    <option value="qwen-max">Qwen Max</option>
+                                    <option value="qwen-turbo">Qwen Turbo</option>
+                                    <option value="qwen3-235b-a22b">Qwen3 235B</option>
+                                    <option value="qwen3-32b">Qwen3 32B</option>
+                                    <option value="qwen3-14b">Qwen3 14B</option>
+                                    <option value="qwq-plus">QwQ Plus (Reasoning)</option>
+                                    <option value="qwen3-coder-plus">Qwen3 Coder Plus</option>
+                                </optgroup>
+                                <optgroup label="Multimodal">
+                                    <option value="qwen3-omni-flash">Qwen3 Omni Flash</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div class="config-group">
@@ -112,6 +122,15 @@
                         <div class="config-group">
                             <label class="config-label">MAX TOKENS <span class="config-value">2048</span></label>
                             <input type="range" min="256" max="8192" step="256" value="2048" class="nexus-slider" disabled>
+                        </div>
+
+                        <div class="config-divider"></div>
+
+                        <!-- Image Attachment for Multimodal -->
+                        <div class="config-group">
+                            <label class="config-label">IMAGE ATTACHMENT</label>
+                            <input type="text" id="chat-image-url" class="nexus-input" placeholder="Paste image URL for multimodal...">
+                            <span class="config-hint">Qwen3 Omni Flash can analyze images</span>
                         </div>
 
                         <div class="config-divider"></div>
@@ -169,18 +188,22 @@
                 <div class="page-grid image-studio-layout">
                     <!-- Prompt Panel -->
                     <div class="image-prompt-panel">
-                        <h3 class="panel-title">PROMPT INPUT</h3>
+                        <h3 class="panel-title">IMAGE GENERATION</h3>
                         <textarea id="img-prompt" class="nexus-textarea" rows="4" placeholder="Describe the masterpiece you want to create..."></textarea>
                         <div class="image-actions">
                             <button class="action-tag" onclick="enhancePrompt()">Enhance Prompt</button>
-                            <button class="action-tag disabled">Image-to-Image</button>
                         </div>
                         <div class="config-group">
                             <label class="config-label">MODEL</label>
                             <select id="img-model" class="nexus-select">
-                                <option value="wan2.6-t2i">Wan 2.6 Text-to-Image</option>
-                                <option value="wan2.7-image-pro">Wan 2.7 Image Pro</option>
-                                <option value="wan2.7-image">Wan 2.7 Image</option>
+                                <optgroup label="Wan Series">
+                                    <option value="wan2.6-t2i">Wan 2.6 Text-to-Image</option>
+                                    <option value="wan2.7-image-pro">Wan 2.7 Image Pro</option>
+                                    <option value="wan2.7-image">Wan 2.7 Image</option>
+                                </optgroup>
+                                <optgroup label="Qwen Series">
+                                    <option value="qwen-image-max">Qwen Image Max</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div class="config-group">
@@ -189,13 +212,38 @@
                                 <option value="1024*1024">1024x1024</option>
                                 <option value="720*1280">720x1280 (Portrait)</option>
                                 <option value="1280*720">1280x720 (Landscape)</option>
-                                <option value="2K">2K</option>
+                                <option value="1664*928">1664x928 (16:9 HD)</option>
                             </select>
                         </div>
                         <button onclick="generateImage()" id="img-btn" class="generate-btn full-width">
-                            <span>Generate</span>
+                            <span>Generate Image</span>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                         </button>
+
+                        <div class="config-divider"></div>
+
+                        <!-- Visual Understanding -->
+                        <h3 class="panel-title">VISUAL UNDERSTANDING</h3>
+                        <p class="panel-desc">Analyze images with Qwen3.6 Plus</p>
+                        <div class="config-group">
+                            <label class="config-label">IMAGE URL</label>
+                            <input type="text" id="vision-url" class="nexus-input" placeholder="Paste image URL to analyze...">
+                        </div>
+                        <div class="config-group">
+                            <label class="config-label">QUESTION</label>
+                            <textarea id="vision-prompt" class="nexus-textarea" rows="2" placeholder="What do you want to know about this image?"></textarea>
+                        </div>
+                        <button onclick="analyzeImage()" id="vision-btn" class="generate-btn full-width secondary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                            <span>Analyze Image</span>
+                        </button>
+                        <div id="vision-result" class="hidden">
+                            <div class="result-header">
+                                <span class="panel-title">Analysis Result</span>
+                                <button onclick="copyVision()" class="copy-btn">Copy</button>
+                            </div>
+                            <div id="vision-output" class="prose-output compact"></div>
+                        </div>
                     </div>
 
                     <!-- Gallery -->
@@ -215,13 +263,76 @@
                 </div>
             </div>
 
-            <!-- Page: Video Engine (Content & TTS) -->
+            <!-- Page: Video Engine -->
             <div class="page" id="page-video-engine">
                 <div class="page-grid video-engine-layout">
-                    <!-- Content Generation -->
+                    <!-- Video Generation Main -->
                     <div class="video-main">
-                        <h3 class="panel-title">Creative Intent</h3>
-                        <p class="panel-desc">Describe the content you want to generate...</p>
+                        <h3 class="panel-title">Video Generation</h3>
+                        <p class="panel-desc">Generate videos with Wan 2.7 models</p>
+                        <div class="content-form">
+                            <div class="config-group">
+                                <label class="config-label">MODEL</label>
+                                <select id="video-model" class="nexus-select">
+                                    <option value="wan2.7-t2v">Wan 2.7 Text-to-Video</option>
+                                    <option value="wan2.7-i2v">Wan 2.7 Image-to-Video</option>
+                                </select>
+                            </div>
+                            <div class="config-group">
+                                <label class="config-label">PROMPT</label>
+                                <textarea id="video-prompt" class="nexus-textarea" rows="3" placeholder="Describe the video you want to generate..."></textarea>
+                            </div>
+                            <div id="video-image-group" class="config-group hidden">
+                                <label class="config-label">FIRST FRAME IMAGE URL</label>
+                                <input type="text" id="video-image-url" class="nexus-input" placeholder="Image URL for first frame (I2V mode)...">
+                            </div>
+                            <div class="form-row">
+                                <div class="config-group">
+                                    <label class="config-label">DURATION</label>
+                                    <select id="video-duration" class="nexus-select">
+                                        <option value="5">5 seconds</option>
+                                        <option value="10">10 seconds</option>
+                                    </select>
+                                </div>
+                                <div class="config-group">
+                                    <label class="config-label">RESOLUTION</label>
+                                    <select id="video-resolution" class="nexus-select">
+                                        <option value="720P">720P</option>
+                                        <option value="1080P">1080P</option>
+                                    </select>
+                                </div>
+                                <div class="config-group">
+                                    <label class="config-label">ASPECT RATIO</label>
+                                    <select id="video-ratio" class="nexus-select">
+                                        <option value="16:9">16:9</option>
+                                        <option value="9:16">9:16</option>
+                                        <option value="1:1">1:1</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button onclick="generateVideo()" id="video-btn" class="generate-btn full-width">
+                                <span>Generate Video</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                            </button>
+                        </div>
+                        <div id="video-status" class="hidden">
+                            <div class="task-status">
+                                <div class="task-spinner"></div>
+                                <span id="video-status-text">Generating video...</span>
+                            </div>
+                        </div>
+                        <div id="video-result" class="hidden">
+                            <div class="result-header">
+                                <span class="panel-title">Generated Video</span>
+                            </div>
+                            <video id="video-player" controls class="video-player"></video>
+                        </div>
+
+                        <div class="config-divider"></div>
+
+                        <!-- Content Generation -->
+                        <h3 class="panel-title">Content Generator</h3>
+                        <p class="panel-desc">Generate marketing content with AI</p>
                         <div class="content-form">
                             <div class="form-row">
                                 <div class="config-group">
@@ -273,41 +384,8 @@
                         </div>
                     </div>
 
-                    <!-- TTS & Marketing Sidebar -->
+                    <!-- Sidebar: Marketing Copy -->
                     <div class="video-sidebar">
-                        <!-- TTS -->
-                        <div class="sidebar-card">
-                            <h3 class="panel-title">Text-to-Speech</h3>
-                            <div class="config-group">
-                                <label class="config-label">PROVIDER</label>
-                                <select id="tts-provider" class="nexus-select" onchange="updateTTSVoices()">
-                                    <option value="qwen3-tts-flash">Qwen3 TTS Flash</option>
-                                    <option value="cosyvoice-v3-flash">CosyVoice v3 Flash</option>
-                                </select>
-                            </div>
-                            <div class="config-group">
-                                <label class="config-label">VOICE</label>
-                                <select id="tts-voice" class="nexus-select">
-                                    <option value="Cherry">Cherry (EN Female)</option>
-                                    <option value="Serena">Serena (EN Female)</option>
-                                    <option value="Ethan">Ethan (EN Male)</option>
-                                    <option value="Chelsie">Chelsie (EN Female)</option>
-                                </select>
-                            </div>
-                            <div class="config-group">
-                                <label class="config-label">TEXT</label>
-                                <textarea id="tts-text" class="nexus-textarea" rows="3" placeholder="Enter text to convert to speech..."></textarea>
-                            </div>
-                            <button onclick="generateTTS()" id="tts-btn" class="generate-btn full-width secondary">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
-                                <span>Generate Speech</span>
-                            </button>
-                            <div id="tts-result" class="hidden">
-                                <audio id="tts-audio" controls class="audio-player"></audio>
-                            </div>
-                        </div>
-
-                        <!-- Marketing Copy -->
                         <div class="sidebar-card">
                             <h3 class="panel-title">Marketing Copy</h3>
                             <div class="config-group">
@@ -351,13 +429,136 @@
                 </div>
             </div>
 
+            <!-- Page: Audio Lab (TTS + Speech Recognition) -->
+            <div class="page" id="page-audio-lab">
+                <div class="page-grid audio-lab-layout">
+                    <!-- TTS Section -->
+                    <div class="audio-main">
+                        <h3 class="panel-title">Text-to-Speech</h3>
+                        <p class="panel-desc">Convert text to natural speech with AI voices</p>
+                        <div class="content-form">
+                            <div class="form-row">
+                                <div class="config-group">
+                                    <label class="config-label">PROVIDER</label>
+                                    <select id="tts-provider" class="nexus-select" onchange="updateTTSVoices()">
+                                        <option value="qwen3-tts-flash">Qwen3 TTS Flash</option>
+                                        <option value="cosyvoice-v3-flash">CosyVoice v3 Flash</option>
+                                    </select>
+                                </div>
+                                <div class="config-group">
+                                    <label class="config-label">VOICE</label>
+                                    <select id="tts-voice" class="nexus-select">
+                                        <option value="Cherry">Cherry (EN Female)</option>
+                                        <option value="Serena">Serena (EN Female)</option>
+                                        <option value="Ethan">Ethan (EN Male)</option>
+                                        <option value="Chelsie">Chelsie (EN Female)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="config-group">
+                                <label class="config-label">TEXT</label>
+                                <textarea id="tts-text" class="nexus-textarea" rows="4" placeholder="Enter text to convert to speech..."></textarea>
+                            </div>
+                            <button onclick="generateTTS()" id="tts-btn" class="generate-btn full-width">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
+                                <span>Generate Speech</span>
+                            </button>
+                        </div>
+                        <div id="tts-result" class="hidden">
+                            <audio id="tts-audio" controls class="audio-player"></audio>
+                        </div>
+
+                        <div class="config-divider"></div>
+
+                        <!-- Speech Recognition -->
+                        <h3 class="panel-title">Speech Recognition</h3>
+                        <p class="panel-desc">Transcribe audio with Fun-ASR</p>
+                        <div class="content-form">
+                            <div class="config-group">
+                                <label class="config-label">AUDIO FILE URL</label>
+                                <input type="text" id="asr-url" class="nexus-input" placeholder="Paste public audio file URL...">
+                                <span class="config-hint">Supports mp3, wav, aac, flac formats</span>
+                            </div>
+                            <div class="config-group">
+                                <label class="config-label">MODEL</label>
+                                <select id="asr-model" class="nexus-select">
+                                    <option value="fun-asr">Fun-ASR</option>
+                                </select>
+                            </div>
+                            <button onclick="transcribeAudio()" id="asr-btn" class="generate-btn full-width secondary">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/></svg>
+                                <span>Transcribe Audio</span>
+                            </button>
+                        </div>
+                        <div id="asr-status" class="hidden">
+                            <div class="task-status">
+                                <div class="task-spinner"></div>
+                                <span id="asr-status-text">Transcribing audio...</span>
+                            </div>
+                        </div>
+                        <div id="asr-result" class="hidden">
+                            <div class="result-header">
+                                <span class="panel-title">Transcription Result</span>
+                                <button onclick="copyASR()" class="copy-btn">Copy</button>
+                            </div>
+                            <div id="asr-output" class="prose-output"></div>
+                        </div>
+                    </div>
+
+                    <!-- Audio Sidebar -->
+                    <div class="audio-sidebar">
+                        <div class="sidebar-card">
+                            <h3 class="panel-title">Audio Capabilities</h3>
+                            <div class="capability-list">
+                                <div class="capability-item">
+                                    <div class="capability-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+                                    </div>
+                                    <div>
+                                        <span class="capability-title">Text-to-Speech</span>
+                                        <span class="capability-desc">Qwen3 TTS Flash, CosyVoice v3</span>
+                                    </div>
+                                </div>
+                                <div class="capability-item">
+                                    <div class="capability-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/></svg>
+                                    </div>
+                                    <div>
+                                        <span class="capability-title">Speech Recognition</span>
+                                        <span class="capability-desc">Fun-ASR multi-language</span>
+                                    </div>
+                                </div>
+                                <div class="capability-item">
+                                    <div class="capability-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+                                    </div>
+                                    <div>
+                                        <span class="capability-title">Supported Formats</span>
+                                        <span class="capability-desc">MP3, WAV, AAC, FLAC, M4A</span>
+                                    </div>
+                                </div>
+                                <div class="capability-item">
+                                    <div class="capability-icon">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg>
+                                    </div>
+                                    <div>
+                                        <span class="capability-title">Languages</span>
+                                        <span class="capability-desc">English, Indonesian, Chinese, +40</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Page: API Management -->
             <div class="page" id="page-api-management">
                 <div class="api-page">
                     <div class="api-header">
                         <div>
                             <h2 class="api-title">API Management</h2>
-                            <p class="api-desc">Configure and monitor your production keys for large language models</p>
+                            <p class="api-desc">Configure and monitor your production keys for AI models</p>
                         </div>
                     </div>
 
@@ -365,13 +566,13 @@
                     <div class="stats-grid">
                         <div class="api-stat-card">
                             <span class="api-stat-label">TOTAL MODELS</span>
-                            <span class="api-stat-value">8+</span>
-                            <span class="api-stat-sub">Text Models</span>
+                            <span class="api-stat-value">18+</span>
+                            <span class="api-stat-sub">All Categories</span>
                         </div>
                         <div class="api-stat-card">
-                            <span class="api-stat-label">ACTIVE PROCESSES</span>
-                            <span class="api-stat-value" id="active-processes">0</span>
-                            <span class="api-stat-sub">Running</span>
+                            <span class="api-stat-label">CAPABILITIES</span>
+                            <span class="api-stat-value">7</span>
+                            <span class="api-stat-sub">Text, Vision, Image, Video, TTS, ASR, Multimodal</span>
                         </div>
                         <div class="api-stat-card">
                             <span class="api-stat-label">AVG LATENCY</span>
@@ -390,15 +591,27 @@
                                 <span>Provider</span>
                                 <span>Status</span>
                             </div>
+                            <!-- Text Models -->
                             <div class="model-row"><span>Qwen Plus</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>Qwen Max</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>Qwen Turbo</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>QwQ Plus</span><span class="tag reason-tag">Reasoning</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>Qwen3 Coder Plus</span><span class="tag code-tag">Code</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>Wan 2.6 T2I</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <!-- Vision -->
+                            <div class="model-row"><span>Qwen3.6 Plus</span><span class="tag vision-tag">Vision</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <!-- Multimodal -->
+                            <div class="model-row"><span>Qwen3 Omni Flash</span><span class="tag multi-tag">Multimodal</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <!-- Image -->
                             <div class="model-row"><span>Wan 2.7 Image Pro</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Qwen Image Max</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <!-- Video -->
+                            <div class="model-row"><span>Wan 2.7 Text-to-Video</span><span class="tag video-tag">Video</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Wan 2.7 Image-to-Video</span><span class="tag video-tag">Video</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <!-- TTS -->
                             <div class="model-row"><span>Qwen3 TTS Flash</span><span class="tag tts-tag">TTS</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>CosyVoice v3 Flash</span><span class="tag tts-tag">TTS</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <!-- ASR -->
+                            <div class="model-row"><span>Fun-ASR</span><span class="tag asr-tag">ASR</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                         </div>
                     </div>
 
