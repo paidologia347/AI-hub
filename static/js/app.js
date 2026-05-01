@@ -1,55 +1,19 @@
-// Tab navigation
-document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-});
-document.getElementById('mobile-nav').addEventListener('change', (e) => switchTab(e.target.value));
+// ===== Page Navigation =====
+function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.topbar-tab').forEach(t => t.classList.remove('active'));
 
-function switchTab(tabId) {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
-    if (activeTab) activeTab.classList.add('active');
-    document.getElementById(`tab-${tabId}`).classList.add('active');
-    document.getElementById('mobile-nav').value = tabId;
+    const page = document.getElementById(`page-${pageId}`);
+    if (page) page.classList.add('active');
+
+    document.querySelectorAll(`.nav-item[data-page="${pageId}"]`).forEach(n => n.classList.add('active'));
+    document.querySelectorAll(`.topbar-tab[data-page="${pageId}"]`).forEach(t => t.classList.add('active'));
+
+    addLog(`Switched to ${pageId.replace(/-/g, ' ')}`);
 }
 
-// Temperature slider
-const tempSlider = document.getElementById('chat-temp');
-const tempValue = document.getElementById('temp-value');
-tempSlider.addEventListener('input', () => { tempValue.textContent = tempSlider.value; });
-
-// Chat
-let isStreaming = false;
-
-function setPrompt(text) {
-    document.getElementById('chat-input').value = text;
-    document.getElementById('chat-input').focus();
-}
-
-function handleChatKeydown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendChat();
-    }
-}
-
-function addMessage(role, content) {
-    const container = document.getElementById('chat-messages');
-    const placeholder = container.querySelector('.text-center');
-    if (placeholder) placeholder.remove();
-
-    const div = document.createElement('div');
-    div.className = `chat-msg ${role}`;
-    const avatarText = role === 'user' ? 'U' : 'AI';
-    div.innerHTML = `
-        <div class="avatar">${avatarText}</div>
-        <div class="bubble">${role === 'user' ? escapeHtml(content) : content}</div>
-    `;
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-    return div;
-}
-
+// ===== Utilities =====
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -92,6 +56,57 @@ function processSSELines(buffer, chunk, callback) {
     return remainder;
 }
 
+function addLog(msg) {
+    const logs = document.getElementById('logs-area');
+    if (!logs) return;
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    entry.textContent = `[${time}] ${msg}`;
+    logs.prepend(entry);
+    if (logs.children.length > 20) logs.lastChild.remove();
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#00d4ff;color:#000;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;z-index:200;animation:fadeIn .3s ease';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+}
+
+// ===== Chat =====
+let isStreaming = false;
+
+function setPrompt(text) {
+    document.getElementById('chat-input').value = text;
+    document.getElementById('chat-input').focus();
+}
+
+function handleChatKeydown(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || !e.shiftKey)) {
+        e.preventDefault();
+        sendChat();
+    }
+}
+
+function addMessage(role, content) {
+    const container = document.getElementById('chat-messages');
+    const placeholder = container.querySelector('.chat-placeholder');
+    if (placeholder) placeholder.remove();
+
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    const avatarText = role === 'user' ? 'U' : 'AI';
+    div.innerHTML = `
+        <div class="msg-avatar">${avatarText}</div>
+        <div class="msg-bubble">${role === 'user' ? escapeHtml(content) : content}</div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return div;
+}
+
 async function sendChat() {
     if (isStreaming) return;
     const input = document.getElementById('chat-input');
@@ -105,11 +120,14 @@ async function sendChat() {
     const systemPrompt = document.getElementById('system-prompt').value;
     const temperature = parseFloat(document.getElementById('chat-temp').value);
 
-    const msgDiv = addMessage('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>');
-    const bubble = msgDiv.querySelector('.bubble');
+    const msgDiv = addMessage('assistant', '<span style="opacity:0.4">Generating...</span>');
+    const bubble = msgDiv.querySelector('.msg-bubble');
 
     isStreaming = true;
     document.getElementById('send-btn').disabled = true;
+    addLog(`Chat request: ${model}`);
+
+    const startTime = Date.now();
 
     try {
         const response = await fetch('/api/chat', {
@@ -120,7 +138,7 @@ async function sendChat() {
 
         if (!response.ok) {
             const err = await response.json();
-            bubble.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            bubble.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
             return;
         }
 
@@ -132,7 +150,6 @@ async function sendChat() {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             const chunk = decoder.decode(value, { stream: true });
             sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
                 fullText += content;
@@ -141,18 +158,21 @@ async function sendChat() {
             document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
         }
 
-        bubble.querySelectorAll('pre code').forEach(block => {
-            hljs.highlightElement(block);
-        });
+        bubble.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+
+        const latency = Date.now() - startTime;
+        document.getElementById('stat-latency').textContent = `${latency}ms`;
+        document.getElementById('stat-tokens').textContent = `~${Math.ceil(fullText.length / 4)}`;
+        addLog(`Response: ${latency}ms, ~${Math.ceil(fullText.length / 4)} tokens`);
     } catch (err) {
-        bubble.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(err.message)}</span>`;
+        bubble.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
     } finally {
         isStreaming = false;
         document.getElementById('send-btn').disabled = false;
     }
 }
 
-// TTS
+// ===== TTS =====
 function updateTTSVoices() {
     const provider = document.getElementById('tts-provider').value;
     const voiceSelect = document.getElementById('tts-voice');
@@ -189,7 +209,8 @@ async function generateTTS() {
     const btn = document.getElementById('tts-btn');
 
     btn.disabled = true;
-    btn.innerHTML = '<div class="loader" style="width:1rem;height:1rem;border-width:2px;"></div> Generating...';
+    btn.innerHTML = '<span>Generating...</span>';
+    addLog(`TTS request: ${provider}`);
 
     try {
         const response = await fetch('/api/tts', {
@@ -210,15 +231,16 @@ async function generateTTS() {
         audio.src = url;
         document.getElementById('tts-result').classList.remove('hidden');
         audio.play();
+        addLog('TTS audio generated');
     } catch (err) {
         alert('Error: ' + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg> Generate Speech';
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg><span>Generate Speech</span>';
     }
 }
 
-// Content Generator
+// ===== Content Generator =====
 async function generateContent() {
     const topic = document.getElementById('content-topic').value.trim();
     if (!topic) return;
@@ -231,9 +253,10 @@ async function generateContent() {
     const outputDiv = document.getElementById('content-output');
 
     btn.disabled = true;
-    btn.innerHTML = '<div class="loader" style="width:1rem;height:1rem;border-width:2px;"></div> Generating...';
+    btn.innerHTML = '<span>Generating...</span>';
     resultDiv.classList.remove('hidden');
-    outputDiv.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+    outputDiv.innerHTML = '<span style="opacity:0.4">Generating content...</span>';
+    addLog(`Content request: ${contentType}`);
 
     try {
         const response = await fetch('/api/content/generate', {
@@ -244,7 +267,7 @@ async function generateContent() {
 
         if (!response.ok) {
             const err = await response.json();
-            outputDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
             return;
         }
 
@@ -256,7 +279,6 @@ async function generateContent() {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             const chunk = decoder.decode(value, { stream: true });
             sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
                 fullText += content;
@@ -265,38 +287,41 @@ async function generateContent() {
         }
 
         outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        addLog('Content generated');
     } catch (err) {
-        outputDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(err.message)}</span>`;
+        outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Generate Content';
+        btn.innerHTML = '<span>Generate Content</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
     }
 }
 
 function copyContent() {
     const text = document.getElementById('content-output').innerText;
     navigator.clipboard.writeText(text);
-    showToast('Content copied to clipboard!');
+    showToast('Content copied!');
 }
 
-// Image Generator
+// ===== Image Generator =====
+let imageCount = 0;
+
 async function generateImage() {
     const prompt = document.getElementById('img-prompt').value.trim();
     if (!prompt) return;
 
     const model = document.getElementById('img-model').value;
     const size = document.getElementById('img-size').value;
-    const quality = document.getElementById('img-quality').value;
     const btn = document.getElementById('img-btn');
 
     btn.disabled = true;
-    btn.innerHTML = '<div class="loader" style="width:1rem;height:1rem;border-width:2px;"></div> Generating...';
+    btn.innerHTML = '<span>Generating...</span>';
+    addLog(`Image request: ${model}`);
 
     try {
         const response = await fetch('/api/image/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, model, size, quality }),
+            body: JSON.stringify({ prompt, model, size }),
         });
 
         if (!response.ok) {
@@ -306,23 +331,41 @@ async function generateImage() {
         }
 
         const data = await response.json();
-        const imgEl = document.getElementById('img-output');
+        const grid = document.getElementById('gallery-grid');
+        const placeholder = grid.querySelector('.gallery-placeholder');
+        if (placeholder) placeholder.remove();
 
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+        const img = document.createElement('img');
         if (data.url) {
-            imgEl.src = data.url;
+            img.src = data.url;
         } else if (data.b64_json) {
-            imgEl.src = `data:image/png;base64,${data.b64_json}`;
+            img.src = `data:image/png;base64,${data.b64_json}`;
         }
-        document.getElementById('img-result').classList.remove('hidden');
+        img.alt = prompt;
+        item.appendChild(img);
+        grid.prepend(item);
+
+        imageCount++;
+        document.getElementById('gallery-count').textContent = `${imageCount} image${imageCount > 1 ? 's' : ''}`;
+        addLog('Image generated');
     } catch (err) {
         alert('Error: ' + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"/></svg> Generate Image';
+        btn.innerHTML = '<span>Generate</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
     }
 }
 
-// Marketing Copy
+function enhancePrompt() {
+    const prompt = document.getElementById('img-prompt').value.trim();
+    if (!prompt) return;
+    document.getElementById('img-prompt').value = prompt + ', highly detailed, 8k resolution, cinematic lighting, photorealistic, masterpiece';
+    addLog('Prompt enhanced');
+}
+
+// ===== Marketing Copy =====
 function updateMarketingTemplate() {
     const template = document.getElementById('mkt-template').value;
     const details = document.getElementById('mkt-details');
@@ -349,16 +392,17 @@ async function generateMarketing() {
 
     const prompts = {
         'product': `Write a compelling product description for "${product}". Details: ${details}. Language: ${language}. Include: headline, key features (as bullet points), benefits, and a closing CTA.`,
-        'landing': `Write landing page copy for "${product}". Details: ${details}. Language: ${language}. Include: hero headline, subheadline, 3 feature sections with icons, social proof section, FAQ, and final CTA.`,
+        'landing': `Write landing page copy for "${product}". Details: ${details}. Language: ${language}. Include: hero headline, subheadline, 3 feature sections, social proof, FAQ, and CTA.`,
         'headline': `Generate 10 powerful headlines and taglines for "${product}". Details: ${details}. Language: ${language}. Mix emotional, benefit-driven, and curiosity-based approaches.`,
         'cta': `Create 10 call-to-action variations for "${product}". Details: ${details}. Language: ${language}. Include button text, supporting copy, and urgency elements.`,
         'brand': `Write a brand story for "${product}". Details: ${details}. Language: ${language}. Include: origin story, mission, vision, values, and brand voice guidelines.`,
     };
 
     btn.disabled = true;
-    btn.innerHTML = '<div class="loader" style="width:1rem;height:1rem;border-width:2px;"></div> Generating...';
+    btn.innerHTML = '<span>Generating...</span>';
     resultDiv.classList.remove('hidden');
-    outputDiv.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+    outputDiv.innerHTML = '<span style="opacity:0.4">Generating copy...</span>';
+    addLog(`Marketing request: ${template}`);
 
     try {
         const response = await fetch('/api/chat', {
@@ -375,7 +419,7 @@ async function generateMarketing() {
 
         if (!response.ok) {
             const err = await response.json();
-            outputDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
             return;
         }
 
@@ -387,7 +431,6 @@ async function generateMarketing() {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             const chunk = decoder.decode(value, { stream: true });
             sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
                 fullText += content;
@@ -396,30 +439,22 @@ async function generateMarketing() {
         }
 
         outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        addLog('Marketing copy generated');
     } catch (err) {
-        outputDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(err.message)}</span>`;
+        outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> Generate Copy';
+        btn.innerHTML = '<span>Generate Copy</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
     }
 }
 
 function copyMarketing() {
     const text = document.getElementById('mkt-output').innerText;
     navigator.clipboard.writeText(text);
-    showToast('Marketing copy copied to clipboard!');
+    showToast('Marketing copy copied!');
 }
 
-// Toast notification
-function showToast(message) {
-    const toast = document.createElement('div');
-    toast.className = 'fixed bottom-6 right-6 bg-accent-blue text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg z-50 animate-fadeIn';
-    toast.style.animation = 'fadeIn 0.3s ease, fadeIn 0.3s ease reverse 1.7s forwards';
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
-}
-
-// Initialize
+// ===== Initialize =====
 updateTTSVoices();
 updateMarketingTemplate();
+addLog('AI Hub initialized');

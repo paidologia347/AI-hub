@@ -1,86 +1,96 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hub - Multi-Tool AI Platform</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>AI Hub - Local Multi-AI Hub</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        dark: { 50: '#f8fafc', 100: '#1e293b', 200: '#1a2332', 300: '#151d2b', 400: '#111827', 500: '#0d1117', 600: '#0a0e14' },
-                        accent: { blue: '#3b82f6', purple: '#8b5cf6', pink: '#ec4899', green: '#10b981', orange: '#f59e0b' }
-                    }
-                }
-            }
-        }
-    </script>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body class="bg-dark-500 text-gray-100 font-sans min-h-screen">
-    <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-dark-500/80 backdrop-blur-xl border-b border-white/5">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
-                <h1 class="text-lg font-bold bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">AI Hub</h1>
+                <div class="brand-text">
+                    <span class="brand-name">Local Node</span>
+                    <span class="brand-sub">AI Hub v2.0</span>
+                </div>
             </div>
-            <nav class="hidden sm:flex items-center gap-1" id="nav-tabs">
-                <button class="nav-tab active" data-tab="text">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                    Text Studio
-                </button>
-                <button class="nav-tab" data-tab="media">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.636 5.636a9 9 0 000 12.728"/></svg>
-                    Media Studio
-                </button>
-                <button class="nav-tab" data-tab="creative">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    Creative Studio
-                </button>
+
+            <nav class="sidebar-nav">
+                <a class="nav-item active" data-page="text-generation" onclick="switchPage('text-generation')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                    <span>Text Generation</span>
+                </a>
+                <a class="nav-item" data-page="image-studio" onclick="switchPage('image-studio')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span>Image Studio</span>
+                </a>
+                <a class="nav-item" data-page="video-engine" onclick="switchPage('video-engine')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span>Video Engine</span>
+                </a>
+                <a class="nav-item" data-page="api-management" onclick="switchPage('api-management')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    <span>API Management</span>
+                </a>
             </nav>
-            <!-- Mobile menu -->
-            <div class="sm:hidden">
-                <select id="mobile-nav" class="bg-dark-300 text-gray-200 rounded-lg px-3 py-1.5 text-sm border border-white/10">
-                    <option value="text">Text Studio</option>
-                    <option value="media">Media Studio</option>
-                    <option value="creative">Creative Studio</option>
-                </select>
-            </div>
-        </div>
-    </header>
 
-    <main class="pt-16 pb-8">
-        <!-- TEXT STUDIO -->
-        <section id="tab-text" class="tab-content active">
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-                <!-- Hero -->
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium mb-3">
-                        <span class="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse"></span>
-                        LLM & Coding Tools
-                    </div>
-                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">AI Text Studio</h2>
-                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Chat with Qwen models powered by Alibaba Cloud Model Studio. Code generation, reasoning, and analysis.</p>
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot online"></span>
+                    <span class="status-text">Online</span>
                 </div>
+                <div class="sidebar-links">
+                    <a href="https://www.alibabacloud.com/help/en/model-studio/" target="_blank" class="sidebar-link">Documentation</a>
+                    <a href="#" class="sidebar-link" onclick="switchPage('api-management')">Settings</a>
+                </div>
+                <div class="usage-stats">
+                    <span class="usage-label">POWERED BY</span>
+                    <span class="usage-value">Alibaba Cloud Model Studio</span>
+                </div>
+            </div>
+        </aside>
 
-                <div class="grid lg:grid-cols-4 gap-4">
-                    <!-- Sidebar -->
-                    <div class="lg:col-span-1 space-y-4">
-                        <div class="card p-4">
-                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Model</label>
-                            <select id="chat-model" class="input-field mt-2">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <span class="topbar-title">AI Hub</span>
+                    <div class="topbar-tabs">
+                        <button class="topbar-tab active" data-page="text-generation" onclick="switchPage('text-generation')">Text Generation</button>
+                        <button class="topbar-tab" data-page="image-studio" onclick="switchPage('image-studio')">Image Studio</button>
+                        <button class="topbar-tab" data-page="video-engine" onclick="switchPage('video-engine')">Video Engine</button>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <button class="topbar-btn" title="Settings" onclick="switchPage('api-management')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                    <button class="topbar-btn" title="Notifications">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page: Text Generation -->
+            <div class="page active" id="page-text-generation">
+                <div class="page-grid text-gen-layout">
+                    <!-- Config Panel -->
+                    <div class="config-panel">
+                        <h3 class="panel-title">Configurations</h3>
+                        <div class="config-group">
+                            <label class="config-label">MODEL SELECTOR</label>
+                            <select id="chat-model" class="nexus-select">
                                 <option value="qwen-plus">Qwen Plus</option>
                                 <option value="qwen-max">Qwen Max</option>
                                 <option value="qwen-turbo">Qwen Turbo</option>
@@ -91,130 +101,143 @@
                                 <option value="qwen3-coder-plus">Qwen3 Coder Plus</option>
                             </select>
                         </div>
-                        <div class="card p-4">
-                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">System Prompt</label>
-                            <textarea id="system-prompt" class="input-field mt-2 h-24 resize-none" placeholder="You are a helpful assistant..."></textarea>
+                        <div class="config-group">
+                            <label class="config-label">SYSTEM PROMPT</label>
+                            <textarea id="system-prompt" class="nexus-textarea" rows="3" placeholder="You are a helpful assistant..."></textarea>
                         </div>
-                        <div class="card p-4">
-                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Temperature: <span id="temp-value">0.7</span></label>
-                            <input type="range" id="chat-temp" min="0" max="2" step="0.1" value="0.7" class="w-full mt-2 accent-accent-blue">
+                        <div class="config-group">
+                            <label class="config-label">TEMPERATURE <span class="config-value" id="temp-value">0.7</span></label>
+                            <input type="range" id="chat-temp" min="0" max="2" step="0.1" value="0.7" class="nexus-slider" oninput="document.getElementById('temp-value').textContent=this.value">
                         </div>
-                        <div class="card p-4">
-                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Quick Prompts</label>
-                            <div class="mt-2 space-y-2">
-                                <button class="quick-prompt-btn" onclick="setPrompt('Explain this code:\n```\n// paste code here\n```')">Code Explainer</button>
-                                <button class="quick-prompt-btn" onclick="setPrompt('Debug this error and suggest a fix:\n')">Debug Helper</button>
-                                <button class="quick-prompt-btn" onclick="setPrompt('Analyze this problem step by step:\n')">Reasoning</button>
-                                <button class="quick-prompt-btn" onclick="setPrompt('Write unit tests for:\n```\n// paste code here\n```')">Test Writer</button>
-                                <button class="quick-prompt-btn" onclick="setPrompt('Refactor this code for better performance:\n```\n// paste code here\n```')">Refactor</button>
-                            </div>
+                        <div class="config-group">
+                            <label class="config-label">MAX TOKENS <span class="config-value">2048</span></label>
+                            <input type="range" min="256" max="8192" step="256" value="2048" class="nexus-slider" disabled>
+                        </div>
+
+                        <div class="config-divider"></div>
+
+                        <h3 class="panel-title" style="font-size: 0.7rem;">QUICK PROMPTS</h3>
+                        <div class="quick-prompts">
+                            <button class="qp-btn" onclick="setPrompt('Explain this code:\n```\n// paste code here\n```')">Code Explainer</button>
+                            <button class="qp-btn" onclick="setPrompt('Debug this error and suggest a fix:\n')">Debug Helper</button>
+                            <button class="qp-btn" onclick="setPrompt('Analyze this problem step by step:\n')">Reasoning</button>
+                            <button class="qp-btn" onclick="setPrompt('Write unit tests for:\n```\n// paste code\n```')">Test Writer</button>
+                            <button class="qp-btn" onclick="setPrompt('Refactor this code for better performance:\n```\n// paste code\n```')">Refactor</button>
                         </div>
                     </div>
 
                     <!-- Chat Area -->
-                    <div class="lg:col-span-3 flex flex-col card" style="height: 70vh;">
-                        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
-                            <div class="text-center text-gray-500 mt-20">
-                                <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                                <p class="text-sm">Start a conversation with AI</p>
-                                <p class="text-xs mt-1 text-gray-600">Select a model and type your message</p>
+                    <div class="chat-area">
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="chat-placeholder">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                                <p>Send a message to start generating</p>
+                                <span>Select a model and configure parameters</span>
                             </div>
                         </div>
-                        <div class="border-t border-white/5 p-4">
-                            <div class="flex gap-2">
-                                <textarea id="chat-input" class="input-field flex-1 resize-none" rows="2" placeholder="Type your message..." onkeydown="handleChatKeydown(event)"></textarea>
-                                <button id="send-btn" onclick="sendChat()" class="btn-primary px-4 self-end">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                                </button>
+                        <div class="chat-input-area">
+                            <textarea id="chat-input" class="chat-input" rows="1" placeholder="Send a message (Ctrl + Enter to generate...)" onkeydown="handleChatKeydown(event)"></textarea>
+                            <button id="send-btn" class="generate-btn" onclick="sendChat()">
+                                <span>Generate</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Stats -->
+                    <div class="stats-panel">
+                        <h3 class="panel-title">LIVE MODE STATS</h3>
+                        <div class="stat-card">
+                            <span class="stat-label">LATENCY</span>
+                            <span class="stat-value" id="stat-latency">--</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">TOKENS USED</span>
+                            <span class="stat-value" id="stat-tokens">--</span>
+                        </div>
+                        <div class="config-divider"></div>
+                        <h3 class="panel-title">RECENT LOGS</h3>
+                        <div class="logs-area" id="logs-area">
+                            <div class="log-entry">System ready</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Image Studio -->
+            <div class="page" id="page-image-studio">
+                <div class="page-grid image-studio-layout">
+                    <!-- Prompt Panel -->
+                    <div class="image-prompt-panel">
+                        <h3 class="panel-title">PROMPT INPUT</h3>
+                        <textarea id="img-prompt" class="nexus-textarea" rows="4" placeholder="Describe the masterpiece you want to create..."></textarea>
+                        <div class="image-actions">
+                            <button class="action-tag" onclick="enhancePrompt()">Enhance Prompt</button>
+                            <button class="action-tag disabled">Image-to-Image</button>
+                        </div>
+                        <div class="config-group">
+                            <label class="config-label">MODEL</label>
+                            <select id="img-model" class="nexus-select">
+                                <option value="wan2.6-t2i">Wan 2.6 Text-to-Image</option>
+                                <option value="wan2.7-image-pro">Wan 2.7 Image Pro</option>
+                                <option value="wan2.7-image">Wan 2.7 Image</option>
+                            </select>
+                        </div>
+                        <div class="config-group">
+                            <label class="config-label">SIZE</label>
+                            <select id="img-size" class="nexus-select">
+                                <option value="1024*1024">1024x1024</option>
+                                <option value="720*1280">720x1280 (Portrait)</option>
+                                <option value="1280*720">1280x720 (Landscape)</option>
+                                <option value="2K">2K</option>
+                            </select>
+                        </div>
+                        <button onclick="generateImage()" id="img-btn" class="generate-btn full-width">
+                            <span>Generate</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Gallery -->
+                    <div class="gallery-panel">
+                        <div class="gallery-header">
+                            <h3 class="panel-title">Generated Gallery</h3>
+                            <span class="gallery-count" id="gallery-count">0 images</span>
+                        </div>
+                        <div class="gallery-grid" id="gallery-grid">
+                            <div class="gallery-placeholder">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <p>No images generated yet</p>
+                                <span>Enter a prompt and click Generate</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- MEDIA STUDIO -->
-        <section id="tab-media" class="tab-content">
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-green/10 border border-accent-green/20 text-accent-green text-xs font-medium mb-3">
-                        <span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse"></span>
-                        Content & Audio
-                    </div>
-                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">AI Media Studio</h2>
-                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Text-to-Speech, content generation, and audio tools.</p>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-6">
-                    <!-- TTS -->
-                    <div class="card p-6">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-accent-green/10 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold">Text-to-Speech</h3>
-                                <p class="text-xs text-gray-400">Convert text to natural speech</p>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Provider</label>
-                                <select id="tts-provider" class="input-field mt-1" onchange="updateTTSVoices()">
-                                    <option value="qwen3-tts-flash">Qwen3 TTS Flash</option>
-                                    <option value="cosyvoice-v3-flash">CosyVoice v3 Flash</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Voice</label>
-                                <select id="tts-voice" class="input-field mt-1">
-                                    <option value="Cherry">Cherry</option>
-                                    <option value="Serena">Serena</option>
-                                    <option value="Ethan">Ethan</option>
-                                    <option value="Chelsie">Chelsie</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Text</label>
-                                <textarea id="tts-text" class="input-field mt-1 h-28 resize-none" placeholder="Enter text to convert to speech..."></textarea>
-                            </div>
-                            <button onclick="generateTTS()" id="tts-btn" class="btn-primary w-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
-                                Generate Speech
-                            </button>
-                            <div id="tts-result" class="hidden">
-                                <audio id="tts-audio" controls class="w-full mt-2 rounded-lg"></audio>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Content Generator -->
-                    <div class="card p-6">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-accent-orange/10 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold">Content Generator</h3>
-                                <p class="text-xs text-gray-400">Blog posts, social media, scripts</p>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Content Type</label>
-                                <select id="content-type" class="input-field mt-1">
-                                    <option value="blog">Blog Post</option>
-                                    <option value="social">Social Media Posts</option>
-                                    <option value="script">Video Script</option>
-                                    <option value="email">Email</option>
-                                    <option value="ad">Ad Copy</option>
-                                    <option value="marketing">Marketing Plan</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="text-xs font-medium text-gray-400">Tone</label>
-                                    <select id="content-tone" class="input-field mt-1">
+            <!-- Page: Video Engine (Content & TTS) -->
+            <div class="page" id="page-video-engine">
+                <div class="page-grid video-engine-layout">
+                    <!-- Content Generation -->
+                    <div class="video-main">
+                        <h3 class="panel-title">Creative Intent</h3>
+                        <p class="panel-desc">Describe the content you want to generate...</p>
+                        <div class="content-form">
+                            <div class="form-row">
+                                <div class="config-group">
+                                    <label class="config-label">CONTENT TYPE</label>
+                                    <select id="content-type" class="nexus-select">
+                                        <option value="blog">Blog Post</option>
+                                        <option value="social">Social Media Posts</option>
+                                        <option value="script">Video Script</option>
+                                        <option value="email">Email</option>
+                                        <option value="ad">Ad Copy</option>
+                                        <option value="marketing">Marketing Plan</option>
+                                    </select>
+                                </div>
+                                <div class="config-group">
+                                    <label class="config-label">TONE</label>
+                                    <select id="content-tone" class="nexus-select">
                                         <option value="professional">Professional</option>
                                         <option value="casual">Casual</option>
                                         <option value="humorous">Humorous</option>
@@ -222,9 +245,9 @@
                                         <option value="informative">Informative</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-400">Language</label>
-                                    <select id="content-lang" class="input-field mt-1">
+                                <div class="config-group">
+                                    <label class="config-label">LANGUAGE</label>
+                                    <select id="content-lang" class="nexus-select">
                                         <option value="id">Indonesia</option>
                                         <option value="en">English</option>
                                         <option value="es">Spanish</option>
@@ -232,107 +255,64 @@
                                     </select>
                                 </div>
                             </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Topic</label>
-                                <textarea id="content-topic" class="input-field mt-1 h-20 resize-none" placeholder="What should the content be about?"></textarea>
+                            <div class="config-group">
+                                <label class="config-label">TOPIC</label>
+                                <textarea id="content-topic" class="nexus-textarea" rows="3" placeholder="What should the content be about?"></textarea>
                             </div>
-                            <button onclick="generateContent()" id="content-btn" class="btn-primary w-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                Generate Content
+                            <button onclick="generateContent()" id="content-btn" class="generate-btn full-width">
+                                <span>Generate Content</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                             </button>
-                            <div id="content-result" class="hidden mt-3">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-xs text-gray-400">Generated Content</span>
-                                    <button onclick="copyContent()" class="text-xs text-accent-blue hover:text-accent-blue/80">Copy</button>
-                                </div>
-                                <div id="content-output" class="prose-output max-h-64 overflow-y-auto"></div>
+                        </div>
+                        <div id="content-result" class="hidden">
+                            <div class="result-header">
+                                <span class="panel-title">Generated Content</span>
+                                <button onclick="copyContent()" class="copy-btn">Copy</button>
                             </div>
+                            <div id="content-output" class="prose-output"></div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- CREATIVE STUDIO -->
-        <section id="tab-creative" class="tab-content">
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-pink/10 border border-accent-pink/20 text-accent-pink text-xs font-medium mb-3">
-                        <span class="w-1.5 h-1.5 rounded-full bg-accent-pink animate-pulse"></span>
-                        Design & Visual
-                    </div>
-                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">AI Creative Studio</h2>
-                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Image generation, marketing visuals, and design tools.</p>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-6">
-                    <!-- Image Generator -->
-                    <div class="card p-6">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-accent-pink/10 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-accent-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold">Image Generator</h3>
-                                <p class="text-xs text-gray-400">Create images from text prompts</p>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Model</label>
-                                <select id="img-model" class="input-field mt-1">
-                                    <option value="wan2.6-t2i">Wan 2.6 Text-to-Image</option>
-                                    <option value="wan2.7-image-pro">Wan 2.7 Image Pro</option>
-                                    <option value="wan2.7-image">Wan 2.7 Image</option>
+                    <!-- TTS & Marketing Sidebar -->
+                    <div class="video-sidebar">
+                        <!-- TTS -->
+                        <div class="sidebar-card">
+                            <h3 class="panel-title">Text-to-Speech</h3>
+                            <div class="config-group">
+                                <label class="config-label">PROVIDER</label>
+                                <select id="tts-provider" class="nexus-select" onchange="updateTTSVoices()">
+                                    <option value="qwen3-tts-flash">Qwen3 TTS Flash</option>
+                                    <option value="cosyvoice-v3-flash">CosyVoice v3 Flash</option>
                                 </select>
                             </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="text-xs font-medium text-gray-400">Size</label>
-                                    <select id="img-size" class="input-field mt-1">
-                                        <option value="1024*1024">1024x1024</option>
-                                        <option value="720*1280">720x1280 (Portrait)</option>
-                                        <option value="1280*720">1280x720 (Landscape)</option>
-                                        <option value="2K">2K</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-400">Quality</label>
-                                    <select id="img-quality" class="input-field mt-1">
-                                        <option value="standard">Standard</option>
-                                        <option value="hd">HD</option>
-                                    </select>
-                                </div>
+                            <div class="config-group">
+                                <label class="config-label">VOICE</label>
+                                <select id="tts-voice" class="nexus-select">
+                                    <option value="Cherry">Cherry (EN Female)</option>
+                                    <option value="Serena">Serena (EN Female)</option>
+                                    <option value="Ethan">Ethan (EN Male)</option>
+                                    <option value="Chelsie">Chelsie (EN Female)</option>
+                                </select>
                             </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Prompt</label>
-                                <textarea id="img-prompt" class="input-field mt-1 h-28 resize-none" placeholder="Describe the image you want to create..."></textarea>
+                            <div class="config-group">
+                                <label class="config-label">TEXT</label>
+                                <textarea id="tts-text" class="nexus-textarea" rows="3" placeholder="Enter text to convert to speech..."></textarea>
                             </div>
-                            <button onclick="generateImage()" id="img-btn" class="btn-primary w-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"/></svg>
-                                Generate Image
+                            <button onclick="generateTTS()" id="tts-btn" class="generate-btn full-width secondary">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
+                                <span>Generate Speech</span>
                             </button>
-                            <div id="img-result" class="hidden mt-3">
-                                <img id="img-output" class="w-full rounded-xl border border-white/10" alt="Generated image">
+                            <div id="tts-result" class="hidden">
+                                <audio id="tts-audio" controls class="audio-player"></audio>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Marketing Copy -->
-                    <div class="card p-6">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold">Marketing Copy AI</h3>
-                                <p class="text-xs text-gray-400">Generate marketing & ad content</p>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Template</label>
-                                <select id="mkt-template" class="input-field mt-1" onchange="updateMarketingTemplate()">
+                        <!-- Marketing Copy -->
+                        <div class="sidebar-card">
+                            <h3 class="panel-title">Marketing Copy</h3>
+                            <div class="config-group">
+                                <label class="config-label">TEMPLATE</label>
+                                <select id="mkt-template" class="nexus-select" onchange="updateMarketingTemplate()">
                                     <option value="product">Product Description</option>
                                     <option value="landing">Landing Page Copy</option>
                                     <option value="headline">Headlines & Taglines</option>
@@ -340,44 +320,120 @@
                                     <option value="brand">Brand Story</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Product / Brand</label>
-                                <input type="text" id="mkt-product" class="input-field mt-1" placeholder="Your product or brand name">
+                            <div class="config-group">
+                                <label class="config-label">PRODUCT / BRAND</label>
+                                <input type="text" id="mkt-product" class="nexus-input" placeholder="Your product or brand name">
                             </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Details</label>
-                                <textarea id="mkt-details" class="input-field mt-1 h-20 resize-none" placeholder="Key features, target audience, unique value..."></textarea>
+                            <div class="config-group">
+                                <label class="config-label">DETAILS</label>
+                                <textarea id="mkt-details" class="nexus-textarea" rows="2" placeholder="Key features, target audience..."></textarea>
                             </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-400">Language</label>
-                                <select id="mkt-lang" class="input-field mt-1">
+                            <div class="config-group">
+                                <label class="config-label">LANGUAGE</label>
+                                <select id="mkt-lang" class="nexus-select">
                                     <option value="id">Indonesia</option>
                                     <option value="en">English</option>
                                 </select>
                             </div>
-                            <button onclick="generateMarketing()" id="mkt-btn" class="btn-primary w-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                Generate Copy
+                            <button onclick="generateMarketing()" id="mkt-btn" class="generate-btn full-width secondary">
+                                <span>Generate Copy</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                             </button>
-                            <div id="mkt-result" class="hidden mt-3">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-xs text-gray-400">Generated Copy</span>
-                                    <button onclick="copyMarketing()" class="text-xs text-accent-purple hover:text-accent-purple/80">Copy</button>
+                            <div id="mkt-result" class="hidden">
+                                <div class="result-header">
+                                    <span class="config-label">Generated Copy</span>
+                                    <button onclick="copyMarketing()" class="copy-btn">Copy</button>
                                 </div>
-                                <div id="mkt-output" class="prose-output max-h-64 overflow-y-auto"></div>
+                                <div id="mkt-output" class="prose-output compact"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
-    </main>
+
+            <!-- Page: API Management -->
+            <div class="page" id="page-api-management">
+                <div class="api-page">
+                    <div class="api-header">
+                        <div>
+                            <h2 class="api-title">API Management</h2>
+                            <p class="api-desc">Configure and monitor your production keys for large language models</p>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="api-stat-card">
+                            <span class="api-stat-label">TOTAL MODELS</span>
+                            <span class="api-stat-value">8+</span>
+                            <span class="api-stat-sub">Text Models</span>
+                        </div>
+                        <div class="api-stat-card">
+                            <span class="api-stat-label">ACTIVE PROCESSES</span>
+                            <span class="api-stat-value" id="active-processes">0</span>
+                            <span class="api-stat-sub">Running</span>
+                        </div>
+                        <div class="api-stat-card">
+                            <span class="api-stat-label">AVG LATENCY</span>
+                            <span class="api-stat-value" id="avg-latency">--</span>
+                            <span class="api-stat-sub">ms</span>
+                        </div>
+                    </div>
+
+                    <!-- Available Models -->
+                    <div class="api-section">
+                        <h3 class="panel-title">Available Models</h3>
+                        <div class="models-table">
+                            <div class="model-row header">
+                                <span>Model</span>
+                                <span>Type</span>
+                                <span>Provider</span>
+                                <span>Status</span>
+                            </div>
+                            <div class="model-row"><span>Qwen Plus</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Qwen Max</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Qwen Turbo</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>QwQ Plus</span><span class="tag reason-tag">Reasoning</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Qwen3 Coder Plus</span><span class="tag code-tag">Code</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Wan 2.6 T2I</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Wan 2.7 Image Pro</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>Qwen3 TTS Flash</span><span class="tag tts-tag">TTS</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>CosyVoice v3 Flash</span><span class="tag tts-tag">TTS</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                        </div>
+                    </div>
+
+                    <!-- API Config -->
+                    <div class="api-section">
+                        <h3 class="panel-title">API Configuration</h3>
+                        <div class="api-config-grid">
+                            <div class="api-config-card">
+                                <span class="config-label">PROVIDER</span>
+                                <span class="config-display">Alibaba Cloud Model Studio</span>
+                            </div>
+                            <div class="api-config-card">
+                                <span class="config-label">REGION</span>
+                                <span class="config-display">Singapore (ap-southeast-1)</span>
+                            </div>
+                            <div class="api-config-card">
+                                <span class="config-label">BASE URL</span>
+                                <span class="config-display mono">dashscope-intl.aliyuncs.com</span>
+                            </div>
+                            <div class="api-config-card">
+                                <span class="config-label">API KEY</span>
+                                <span class="config-display mono">sk-••••••••••••</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-dark-500/80 backdrop-blur-sm z-50 hidden items-center justify-center">
-        <div class="text-center">
-            <div class="loader mb-4"></div>
-            <p id="loading-text" class="text-gray-300 text-sm">Processing...</p>
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loader-content">
+            <div class="nexus-loader"></div>
+            <p id="loading-text">Processing...</p>
         </div>
     </div>
 
