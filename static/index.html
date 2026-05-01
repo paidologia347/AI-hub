@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hub - Multi-Tool AI Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        dark: { 50: '#f8fafc', 100: '#1e293b', 200: '#1a2332', 300: '#151d2b', 400: '#111827', 500: '#0d1117', 600: '#0a0e14' },
+                        accent: { blue: '#3b82f6', purple: '#8b5cf6', pink: '#ec4899', green: '#10b981', orange: '#f59e0b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-dark-500 text-gray-100 font-sans min-h-screen">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-dark-500/80 backdrop-blur-xl border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">AI Hub</h1>
+            </div>
+            <nav class="hidden sm:flex items-center gap-1" id="nav-tabs">
+                <button class="nav-tab active" data-tab="text">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                    Text Studio
+                </button>
+                <button class="nav-tab" data-tab="media">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.636 5.636a9 9 0 000 12.728"/></svg>
+                    Media Studio
+                </button>
+                <button class="nav-tab" data-tab="creative">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Creative Studio
+                </button>
+            </nav>
+            <!-- Mobile menu -->
+            <div class="sm:hidden">
+                <select id="mobile-nav" class="bg-dark-300 text-gray-200 rounded-lg px-3 py-1.5 text-sm border border-white/10">
+                    <option value="text">Text Studio</option>
+                    <option value="media">Media Studio</option>
+                    <option value="creative">Creative Studio</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-16 pb-8">
+        <!-- TEXT STUDIO -->
+        <section id="tab-text" class="tab-content active">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+                <!-- Hero -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium mb-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse"></span>
+                        LLM & Coding Tools
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">AI Text Studio</h2>
+                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Chat with GPT, Claude, Gemini, and more. Code generation, reasoning, and analysis.</p>
+                </div>
+
+                <div class="grid lg:grid-cols-4 gap-4">
+                    <!-- Sidebar -->
+                    <div class="lg:col-span-1 space-y-4">
+                        <div class="card p-4">
+                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Model</label>
+                            <select id="chat-model" class="input-field mt-2">
+                                <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
+                                <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                                <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                <option value="grok-3-mini">Grok 3 Mini</option>
+                                <option value="deepseek-chat">DeepSeek Chat</option>
+                                <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                            </select>
+                        </div>
+                        <div class="card p-4">
+                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">System Prompt</label>
+                            <textarea id="system-prompt" class="input-field mt-2 h-24 resize-none" placeholder="You are a helpful assistant..."></textarea>
+                        </div>
+                        <div class="card p-4">
+                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Temperature: <span id="temp-value">0.7</span></label>
+                            <input type="range" id="chat-temp" min="0" max="2" step="0.1" value="0.7" class="w-full mt-2 accent-accent-blue">
+                        </div>
+                        <div class="card p-4">
+                            <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Quick Prompts</label>
+                            <div class="mt-2 space-y-2">
+                                <button class="quick-prompt-btn" onclick="setPrompt('Explain this code:\n```\n// paste code here\n```')">Code Explainer</button>
+                                <button class="quick-prompt-btn" onclick="setPrompt('Debug this error and suggest a fix:\n')">Debug Helper</button>
+                                <button class="quick-prompt-btn" onclick="setPrompt('Analyze this problem step by step:\n')">Reasoning</button>
+                                <button class="quick-prompt-btn" onclick="setPrompt('Write unit tests for:\n```\n// paste code here\n```')">Test Writer</button>
+                                <button class="quick-prompt-btn" onclick="setPrompt('Refactor this code for better performance:\n```\n// paste code here\n```')">Refactor</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Area -->
+                    <div class="lg:col-span-3 flex flex-col card" style="height: 70vh;">
+                        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+                            <div class="text-center text-gray-500 mt-20">
+                                <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                                <p class="text-sm">Start a conversation with AI</p>
+                                <p class="text-xs mt-1 text-gray-600">Select a model and type your message</p>
+                            </div>
+                        </div>
+                        <div class="border-t border-white/5 p-4">
+                            <div class="flex gap-2">
+                                <textarea id="chat-input" class="input-field flex-1 resize-none" rows="2" placeholder="Type your message..." onkeydown="handleChatKeydown(event)"></textarea>
+                                <button id="send-btn" onclick="sendChat()" class="btn-primary px-4 self-end">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MEDIA STUDIO -->
+        <section id="tab-media" class="tab-content">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-green/10 border border-accent-green/20 text-accent-green text-xs font-medium mb-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse"></span>
+                        Content & Audio
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">AI Media Studio</h2>
+                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Text-to-Speech, content generation, and audio tools.</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- TTS -->
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-accent-green/10 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Text-to-Speech</h3>
+                                <p class="text-xs text-gray-400">Convert text to natural speech</p>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Provider</label>
+                                <select id="tts-provider" class="input-field mt-1" onchange="updateTTSVoices()">
+                                    <option value="openai">OpenAI TTS</option>
+                                    <option value="aws-polly">AWS Polly</option>
+                                    <option value="elevenlabs">ElevenLabs</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Voice</label>
+                                <select id="tts-voice" class="input-field mt-1">
+                                    <option value="alloy">Alloy</option>
+                                    <option value="echo">Echo</option>
+                                    <option value="fable">Fable</option>
+                                    <option value="onyx">Onyx</option>
+                                    <option value="nova">Nova</option>
+                                    <option value="shimmer">Shimmer</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Text</label>
+                                <textarea id="tts-text" class="input-field mt-1 h-28 resize-none" placeholder="Enter text to convert to speech..."></textarea>
+                            </div>
+                            <button onclick="generateTTS()" id="tts-btn" class="btn-primary w-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
+                                Generate Speech
+                            </button>
+                            <div id="tts-result" class="hidden">
+                                <audio id="tts-audio" controls class="w-full mt-2 rounded-lg"></audio>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content Generator -->
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-accent-orange/10 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Content Generator</h3>
+                                <p class="text-xs text-gray-400">Blog posts, social media, scripts</p>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Content Type</label>
+                                <select id="content-type" class="input-field mt-1">
+                                    <option value="blog">Blog Post</option>
+                                    <option value="social">Social Media Posts</option>
+                                    <option value="script">Video Script</option>
+                                    <option value="email">Email</option>
+                                    <option value="ad">Ad Copy</option>
+                                    <option value="marketing">Marketing Plan</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-xs font-medium text-gray-400">Tone</label>
+                                    <select id="content-tone" class="input-field mt-1">
+                                        <option value="professional">Professional</option>
+                                        <option value="casual">Casual</option>
+                                        <option value="humorous">Humorous</option>
+                                        <option value="persuasive">Persuasive</option>
+                                        <option value="informative">Informative</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-medium text-gray-400">Language</label>
+                                    <select id="content-lang" class="input-field mt-1">
+                                        <option value="id">Indonesia</option>
+                                        <option value="en">English</option>
+                                        <option value="es">Spanish</option>
+                                        <option value="fr">French</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Topic</label>
+                                <textarea id="content-topic" class="input-field mt-1 h-20 resize-none" placeholder="What should the content be about?"></textarea>
+                            </div>
+                            <button onclick="generateContent()" id="content-btn" class="btn-primary w-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                Generate Content
+                            </button>
+                            <div id="content-result" class="hidden mt-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-gray-400">Generated Content</span>
+                                    <button onclick="copyContent()" class="text-xs text-accent-blue hover:text-accent-blue/80">Copy</button>
+                                </div>
+                                <div id="content-output" class="prose-output max-h-64 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CREATIVE STUDIO -->
+        <section id="tab-creative" class="tab-content">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-pink/10 border border-accent-pink/20 text-accent-pink text-xs font-medium mb-3">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent-pink animate-pulse"></span>
+                        Design & Visual
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">AI Creative Studio</h2>
+                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Image generation, marketing visuals, and design tools.</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Image Generator -->
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-accent-pink/10 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-accent-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Image Generator</h3>
+                                <p class="text-xs text-gray-400">Create images from text prompts</p>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Model</label>
+                                <select id="img-model" class="input-field mt-1">
+                                    <option value="dall-e-3">DALL-E 3</option>
+                                    <option value="gpt-image-1">GPT Image 1</option>
+                                    <option value="grok-2-image">Grok 2 Image</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-xs font-medium text-gray-400">Size</label>
+                                    <select id="img-size" class="input-field mt-1">
+                                        <option value="1024x1024">1024x1024</option>
+                                        <option value="1792x1024">1792x1024</option>
+                                        <option value="1024x1792">1024x1792</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-medium text-gray-400">Quality</label>
+                                    <select id="img-quality" class="input-field mt-1">
+                                        <option value="standard">Standard</option>
+                                        <option value="hd">HD</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Prompt</label>
+                                <textarea id="img-prompt" class="input-field mt-1 h-28 resize-none" placeholder="Describe the image you want to create..."></textarea>
+                            </div>
+                            <button onclick="generateImage()" id="img-btn" class="btn-primary w-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"/></svg>
+                                Generate Image
+                            </button>
+                            <div id="img-result" class="hidden mt-3">
+                                <img id="img-output" class="w-full rounded-xl border border-white/10" alt="Generated image">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Marketing Copy -->
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Marketing Copy AI</h3>
+                                <p class="text-xs text-gray-400">Generate marketing & ad content</p>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Template</label>
+                                <select id="mkt-template" class="input-field mt-1" onchange="updateMarketingTemplate()">
+                                    <option value="product">Product Description</option>
+                                    <option value="landing">Landing Page Copy</option>
+                                    <option value="headline">Headlines & Taglines</option>
+                                    <option value="cta">Call-to-Action</option>
+                                    <option value="brand">Brand Story</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Product / Brand</label>
+                                <input type="text" id="mkt-product" class="input-field mt-1" placeholder="Your product or brand name">
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Details</label>
+                                <textarea id="mkt-details" class="input-field mt-1 h-20 resize-none" placeholder="Key features, target audience, unique value..."></textarea>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-400">Language</label>
+                                <select id="mkt-lang" class="input-field mt-1">
+                                    <option value="id">Indonesia</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                            <button onclick="generateMarketing()" id="mkt-btn" class="btn-primary w-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                Generate Copy
+                            </button>
+                            <div id="mkt-result" class="hidden mt-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-gray-400">Generated Copy</span>
+                                    <button onclick="copyMarketing()" class="text-xs text-accent-purple hover:text-accent-purple/80">Copy</button>
+                                </div>
+                                <div id="mkt-output" class="prose-output max-h-64 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-dark-500/80 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="text-center">
+            <div class="loader mb-4"></div>
+            <p id="loading-text" class="text-gray-300 text-sm">Processing...</p>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
