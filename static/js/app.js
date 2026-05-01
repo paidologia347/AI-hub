@@ -119,6 +119,7 @@ async function sendChat() {
     const model = document.getElementById('chat-model').value;
     const systemPrompt = document.getElementById('system-prompt').value;
     const temperature = parseFloat(document.getElementById('chat-temp').value);
+    const imageUrl = document.getElementById('chat-image-url').value.trim();
 
     const msgDiv = addMessage('assistant', '<span style="opacity:0.4">Generating...</span>');
     const bubble = msgDiv.querySelector('.msg-bubble');
@@ -130,10 +131,21 @@ async function sendChat() {
     const startTime = Date.now();
 
     try {
-        const response = await fetch('/api/chat', {
+        let endpoint = '/api/chat';
+        let body = { message, model, system_prompt: systemPrompt, temperature, stream: true };
+
+        if (imageUrl && model === 'qwen3-omni-flash') {
+            endpoint = '/api/multimodal';
+            body = { message, image_url: imageUrl, model, stream: true };
+        } else if (imageUrl) {
+            endpoint = '/api/vision';
+            body = { message, image_url: imageUrl, model: 'qwen3.6-plus', stream: true };
+        }
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, model, system_prompt: systemPrompt, temperature, stream: true }),
+            body: JSON.stringify(body),
         });
 
         if (!response.ok) {
@@ -355,7 +367,7 @@ async function generateImage() {
         alert('Error: ' + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>Generate</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
+        btn.innerHTML = '<span>Generate Image</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
     }
 }
 
@@ -364,6 +376,277 @@ function enhancePrompt() {
     if (!prompt) return;
     document.getElementById('img-prompt').value = prompt + ', highly detailed, 8k resolution, cinematic lighting, photorealistic, masterpiece';
     addLog('Prompt enhanced');
+}
+
+// ===== Visual Understanding =====
+async function analyzeImage() {
+    const imageUrl = document.getElementById('vision-url').value.trim();
+    const question = document.getElementById('vision-prompt').value.trim();
+    if (!imageUrl || !question) {
+        alert('Please provide both an image URL and a question.');
+        return;
+    }
+
+    const btn = document.getElementById('vision-btn');
+    const resultDiv = document.getElementById('vision-result');
+    const outputDiv = document.getElementById('vision-output');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>Analyzing...</span>';
+    resultDiv.classList.remove('hidden');
+    outputDiv.innerHTML = '<span style="opacity:0.4">Analyzing image...</span>';
+    addLog('Vision analysis: qwen3.6-plus');
+
+    try {
+        const response = await fetch('/api/vision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: question, image_url: imageUrl, stream: true }),
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        let sseBuffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
+                fullText += content;
+                outputDiv.innerHTML = renderMarkdown(fullText);
+            });
+        }
+
+        outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        addLog('Vision analysis complete');
+    } catch (err) {
+        outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Analyze Image</span>';
+    }
+}
+
+function copyVision() {
+    const text = document.getElementById('vision-output').innerText;
+    navigator.clipboard.writeText(text);
+    showToast('Analysis copied!');
+}
+
+// ===== Video Generation =====
+document.addEventListener('DOMContentLoaded', () => {
+    const videoModel = document.getElementById('video-model');
+    if (videoModel) {
+        videoModel.addEventListener('change', () => {
+            const imageGroup = document.getElementById('video-image-group');
+            if (videoModel.value === 'wan2.7-i2v') {
+                imageGroup.classList.remove('hidden');
+            } else {
+                imageGroup.classList.add('hidden');
+            }
+        });
+    }
+});
+
+async function generateVideo() {
+    const prompt = document.getElementById('video-prompt').value.trim();
+    if (!prompt) return;
+
+    const model = document.getElementById('video-model').value;
+    const duration = parseInt(document.getElementById('video-duration').value);
+    const resolution = document.getElementById('video-resolution').value;
+    const ratio = document.getElementById('video-ratio').value;
+    const imageUrl = document.getElementById('video-image-url').value.trim();
+
+    const btn = document.getElementById('video-btn');
+    const statusDiv = document.getElementById('video-status');
+    const statusText = document.getElementById('video-status-text');
+    const resultDiv = document.getElementById('video-result');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>Submitting...</span>';
+    statusDiv.classList.remove('hidden');
+    resultDiv.classList.add('hidden');
+    statusText.textContent = 'Submitting video generation task...';
+    addLog(`Video request: ${model}`);
+
+    try {
+        const body = { prompt, model, duration, resolution, ratio };
+        if (imageUrl && model === 'wan2.7-i2v') {
+            body.image_url = imageUrl;
+        }
+
+        const response = await fetch('/api/video/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            statusText.textContent = 'Error: ' + (err.detail || 'Unknown error');
+            statusDiv.querySelector('.task-spinner').style.display = 'none';
+            return;
+        }
+
+        const data = await response.json();
+        const taskId = data.task_id;
+        statusText.textContent = `Task submitted (${taskId.slice(0, 8)}...). Generating video...`;
+        addLog(`Video task: ${taskId}`);
+
+        await pollVideoStatus(taskId);
+    } catch (err) {
+        statusText.textContent = 'Error: ' + err.message;
+        statusDiv.querySelector('.task-spinner').style.display = 'none';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Generate Video</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>';
+    }
+}
+
+async function pollVideoStatus(taskId) {
+    const statusText = document.getElementById('video-status-text');
+    const statusDiv = document.getElementById('video-status');
+    const resultDiv = document.getElementById('video-result');
+    const player = document.getElementById('video-player');
+
+    const maxPolls = 100;
+    for (let i = 0; i < maxPolls; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+
+        try {
+            const resp = await fetch(`/api/video/status/${taskId}`);
+            const data = await resp.json();
+
+            if (data.status === 'SUCCEEDED') {
+                statusDiv.classList.add('hidden');
+                resultDiv.classList.remove('hidden');
+                player.src = data.video_url;
+                addLog('Video generated successfully');
+                return;
+            }
+
+            if (data.status === 'FAILED') {
+                statusText.textContent = 'Failed: ' + (data.error || 'Unknown error');
+                statusDiv.querySelector('.task-spinner').style.display = 'none';
+                addLog('Video generation failed');
+                return;
+            }
+
+            statusText.textContent = `Generating video... (${(i + 1) * 3}s elapsed)`;
+        } catch (err) {
+            statusText.textContent = 'Poll error: ' + err.message;
+        }
+    }
+
+    statusText.textContent = 'Timed out waiting for video generation.';
+    statusDiv.querySelector('.task-spinner').style.display = 'none';
+}
+
+// ===== Speech Recognition =====
+async function transcribeAudio() {
+    const audioUrl = document.getElementById('asr-url').value.trim();
+    if (!audioUrl) {
+        alert('Please provide an audio file URL.');
+        return;
+    }
+
+    const model = document.getElementById('asr-model').value;
+    const btn = document.getElementById('asr-btn');
+    const statusDiv = document.getElementById('asr-status');
+    const statusText = document.getElementById('asr-status-text');
+    const resultDiv = document.getElementById('asr-result');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>Submitting...</span>';
+    statusDiv.classList.remove('hidden');
+    resultDiv.classList.add('hidden');
+    statusText.textContent = 'Submitting transcription task...';
+    addLog(`ASR request: ${model}`);
+
+    try {
+        const formData = new FormData();
+        formData.append('audio_url', audioUrl);
+        formData.append('model', model);
+
+        const response = await fetch('/api/asr', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            statusText.textContent = 'Error: ' + (err.detail || 'Unknown error');
+            statusDiv.querySelector('.task-spinner').style.display = 'none';
+            return;
+        }
+
+        const data = await response.json();
+        const taskId = data.task_id;
+        statusText.textContent = `Task submitted (${taskId.slice(0, 8)}...). Transcribing...`;
+        addLog(`ASR task: ${taskId}`);
+
+        await pollASRStatus(taskId);
+    } catch (err) {
+        statusText.textContent = 'Error: ' + err.message;
+        statusDiv.querySelector('.task-spinner').style.display = 'none';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/></svg><span>Transcribe Audio</span>';
+    }
+}
+
+async function pollASRStatus(taskId) {
+    const statusText = document.getElementById('asr-status-text');
+    const statusDiv = document.getElementById('asr-status');
+    const resultDiv = document.getElementById('asr-result');
+    const outputDiv = document.getElementById('asr-output');
+
+    const maxPolls = 100;
+    for (let i = 0; i < maxPolls; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+
+        try {
+            const resp = await fetch(`/api/asr/status/${taskId}`);
+            const data = await resp.json();
+
+            if (data.status === 'SUCCEEDED') {
+                statusDiv.classList.add('hidden');
+                resultDiv.classList.remove('hidden');
+                outputDiv.textContent = data.transcript || 'No transcript available.';
+                addLog('Transcription complete');
+                return;
+            }
+
+            if (data.status === 'FAILED') {
+                statusText.textContent = 'Failed: ' + (data.error || 'Unknown error');
+                statusDiv.querySelector('.task-spinner').style.display = 'none';
+                addLog('Transcription failed');
+                return;
+            }
+
+            statusText.textContent = `Transcribing... (${(i + 1) * 3}s elapsed)`;
+        } catch (err) {
+            statusText.textContent = 'Poll error: ' + err.message;
+        }
+    }
+
+    statusText.textContent = 'Timed out waiting for transcription.';
+    statusDiv.querySelector('.task-spinner').style.display = 'none';
+}
+
+function copyASR() {
+    const text = document.getElementById('asr-output').innerText;
+    navigator.clipboard.writeText(text);
+    showToast('Transcript copied!');
 }
 
 // ===== Marketing Copy =====
@@ -458,4 +741,4 @@ function copyMarketing() {
 // ===== Initialize =====
 updateTTSVoices();
 updateMarketingTemplate();
-addLog('AI Hub initialized');
+addLog('AI Hub v3.0 initialized');

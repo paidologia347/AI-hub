@@ -928,6 +928,10 @@ html, body {
 .code-tag { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
 .img-tag { background: rgba(236, 72, 153, 0.1); color: var(--accent-pink); }
 .tts-tag { background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); }
+.video-tag { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
+.vision-tag { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+.multi-tag { background: rgba(0, 212, 255, 0.15); color: var(--accent); }
+.asr-tag { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 
 .status-badge {
     display: inline-flex;
@@ -1018,6 +1022,107 @@ html, body {
 /* ===== UTILITY ===== */
 .hidden { display: none !important; }
 
+/* ===== AUDIO LAB LAYOUT ===== */
+.audio-lab-layout {
+    grid-template-columns: 1fr 320px;
+}
+
+.audio-main {
+    background: var(--bg-primary);
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.audio-sidebar {
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+}
+
+/* Capability List */
+.capability-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.capability-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.capability-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.capability-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.capability-desc {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ===== VIDEO PLAYER ===== */
+.video-player {
+    width: 100%;
+    max-height: 480px;
+    border-radius: var(--radius);
+    background: #000;
+    margin-top: 8px;
+}
+
+/* ===== TASK STATUS ===== */
+.task-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 12px;
+}
+
+.task-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+#video-status-text, #asr-status-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ===== CONFIG HINT ===== */
+.config-hint {
+    display: block;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-style: italic;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .sidebar { display: none; }
@@ -1025,6 +1130,7 @@ html, body {
     .stats-panel { display: none; }
     .image-studio-layout { grid-template-columns: 1fr; }
     .video-engine-layout { grid-template-columns: 1fr; }
+    .audio-lab-layout { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: 1fr; }
     .api-config-grid { grid-template-columns: 1fr; }
