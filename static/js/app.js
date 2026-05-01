@@ -157,29 +157,17 @@ function updateTTSVoices() {
     const provider = document.getElementById('tts-provider').value;
     const voiceSelect = document.getElementById('tts-voice');
     const voices = {
-        'openai': [
-            { value: 'alloy', label: 'Alloy' },
-            { value: 'echo', label: 'Echo' },
-            { value: 'fable', label: 'Fable' },
-            { value: 'onyx', label: 'Onyx' },
-            { value: 'nova', label: 'Nova' },
-            { value: 'shimmer', label: 'Shimmer' },
+        'qwen3-tts-flash': [
+            { value: 'Cherry', label: 'Cherry (EN Female)' },
+            { value: 'Serena', label: 'Serena (EN Female)' },
+            { value: 'Ethan', label: 'Ethan (EN Male)' },
+            { value: 'Chelsie', label: 'Chelsie (EN Female)' },
         ],
-        'aws-polly': [
-            { value: 'Joanna', label: 'Joanna (EN)' },
-            { value: 'Matthew', label: 'Matthew (EN)' },
-            { value: 'Ivy', label: 'Ivy (EN)' },
-            { value: 'Lea', label: 'Lea (FR)' },
-            { value: 'Vicki', label: 'Vicki (DE)' },
-            { value: 'Lucia', label: 'Lucia (ES)' },
-        ],
-        'elevenlabs': [
-            { value: 'Rachel', label: 'Rachel' },
-            { value: 'Drew', label: 'Drew' },
-            { value: 'Clyde', label: 'Clyde' },
-            { value: 'Paul', label: 'Paul' },
-            { value: 'Domi', label: 'Domi' },
-            { value: 'Dave', label: 'Dave' },
+        'cosyvoice-v3-flash': [
+            { value: 'longxiaochun', label: 'Xiaochun (ZH Female)' },
+            { value: 'longxiaoxia', label: 'Xiaoxia (ZH Female)' },
+            { value: 'longyue', label: 'Yue (ZH Female)' },
+            { value: 'longlaotie', label: 'Laotie (ZH Male)' },
         ],
     };
 
@@ -378,7 +366,7 @@ async function generateMarketing() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: prompts[template],
-                model: 'gpt-4.1-nano',
+                model: 'qwen-plus',
                 system_prompt: 'You are an expert marketing copywriter. Create professional, persuasive marketing content. Use markdown formatting.',
                 temperature: 0.8,
                 stream: true,

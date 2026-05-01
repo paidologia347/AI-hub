@@ -72,7 +72,7 @@
                         LLM & Coding Tools
                     </div>
                     <h2 class="text-2xl sm:text-3xl font-bold mb-2">AI Text Studio</h2>
-                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Chat with GPT, Claude, Gemini, and more. Code generation, reasoning, and analysis.</p>
+                    <p class="text-gray-400 text-sm max-w-lg mx-auto">Chat with Qwen models powered by Alibaba Cloud Model Studio. Code generation, reasoning, and analysis.</p>
                 </div>
 
                 <div class="grid lg:grid-cols-4 gap-4">
@@ -81,13 +81,14 @@
                         <div class="card p-4">
                             <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Model</label>
                             <select id="chat-model" class="input-field mt-2">
-                                <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
-                                <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
-                                <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-                                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                                <option value="grok-3-mini">Grok 3 Mini</option>
-                                <option value="deepseek-chat">DeepSeek Chat</option>
-                                <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                                <option value="qwen-plus">Qwen Plus</option>
+                                <option value="qwen-max">Qwen Max</option>
+                                <option value="qwen-turbo">Qwen Turbo</option>
+                                <option value="qwen3-235b-a22b">Qwen3 235B</option>
+                                <option value="qwen3-32b">Qwen3 32B</option>
+                                <option value="qwen3-14b">Qwen3 14B</option>
+                                <option value="qwq-plus">QwQ Plus (Reasoning)</option>
+                                <option value="qwen3-coder-plus">Qwen3 Coder Plus</option>
                             </select>
                         </div>
                         <div class="card p-4">
@@ -160,20 +161,17 @@
                             <div>
                                 <label class="text-xs font-medium text-gray-400">Provider</label>
                                 <select id="tts-provider" class="input-field mt-1" onchange="updateTTSVoices()">
-                                    <option value="openai">OpenAI TTS</option>
-                                    <option value="aws-polly">AWS Polly</option>
-                                    <option value="elevenlabs">ElevenLabs</option>
+                                    <option value="qwen3-tts-flash">Qwen3 TTS Flash</option>
+                                    <option value="cosyvoice-v3-flash">CosyVoice v3 Flash</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="text-xs font-medium text-gray-400">Voice</label>
                                 <select id="tts-voice" class="input-field mt-1">
-                                    <option value="alloy">Alloy</option>
-                                    <option value="echo">Echo</option>
-                                    <option value="fable">Fable</option>
-                                    <option value="onyx">Onyx</option>
-                                    <option value="nova">Nova</option>
-                                    <option value="shimmer">Shimmer</option>
+                                    <option value="Cherry">Cherry</option>
+                                    <option value="Serena">Serena</option>
+                                    <option value="Ethan">Ethan</option>
+                                    <option value="Chelsie">Chelsie</option>
                                 </select>
                             </div>
                             <div>
@@ -283,18 +281,19 @@
                             <div>
                                 <label class="text-xs font-medium text-gray-400">Model</label>
                                 <select id="img-model" class="input-field mt-1">
-                                    <option value="dall-e-3">DALL-E 3</option>
-                                    <option value="gpt-image-1">GPT Image 1</option>
-                                    <option value="grok-2-image">Grok 2 Image</option>
+                                    <option value="wan2.6-t2i">Wan 2.6 Text-to-Image</option>
+                                    <option value="wan2.7-image-pro">Wan 2.7 Image Pro</option>
+                                    <option value="wan2.7-image">Wan 2.7 Image</option>
                                 </select>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="text-xs font-medium text-gray-400">Size</label>
                                     <select id="img-size" class="input-field mt-1">
-                                        <option value="1024x1024">1024x1024</option>
-                                        <option value="1792x1024">1792x1024</option>
-                                        <option value="1024x1792">1024x1792</option>
+                                        <option value="1024*1024">1024x1024</option>
+                                        <option value="720*1280">720x1280 (Portrait)</option>
+                                        <option value="1280*720">1280x720 (Landscape)</option>
+                                        <option value="2K">2K</option>
                                     </select>
                                 </div>
                                 <div>
