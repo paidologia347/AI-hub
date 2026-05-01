@@ -59,10 +59,37 @@ function escapeHtml(text) {
 function renderMarkdown(text) {
     try {
         const html = marked.parse(text, { breaks: true, gfm: true });
-        return html;
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        template.content.querySelectorAll('script,iframe,object,embed,form').forEach(el => el.remove());
+        template.content.querySelectorAll('*').forEach(el => {
+            for (const attr of [...el.attributes]) {
+                if (attr.name.startsWith('on') || attr.value.startsWith('javascript:')) {
+                    el.removeAttribute(attr.name);
+                }
+            }
+        });
+        return template.innerHTML;
     } catch {
         return escapeHtml(text);
     }
+}
+
+function processSSELines(buffer, chunk, callback) {
+    buffer += chunk;
+    const parts = buffer.split('\n');
+    const remainder = parts.pop();
+    for (const line of parts) {
+        if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) callback(parsed.content);
+            } catch {}
+        }
+    }
+    return remainder;
 }
 
 async function sendChat() {
@@ -100,31 +127,20 @@ async function sendChat() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
+        let sseBuffer = '';
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    if (data === '[DONE]') break;
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (parsed.content) {
-                            fullText += parsed.content;
-                            bubble.innerHTML = renderMarkdown(fullText);
-                        }
-                    } catch {}
-                }
-            }
+            sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
+                fullText += content;
+                bubble.innerHTML = renderMarkdown(fullText);
+            });
             document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
         }
 
-        // Highlight code blocks
         bubble.querySelectorAll('pre code').forEach(block => {
             hljs.highlightElement(block);
         });
@@ -247,27 +263,17 @@ async function generateContent() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
+        let sseBuffer = '';
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    if (data === '[DONE]') break;
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (parsed.content) {
-                            fullText += parsed.content;
-                            outputDiv.innerHTML = renderMarkdown(fullText);
-                        }
-                    } catch {}
-                }
-            }
+            sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
+                fullText += content;
+                outputDiv.innerHTML = renderMarkdown(fullText);
+            });
         }
 
         outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
@@ -388,27 +394,17 @@ async function generateMarketing() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
+        let sseBuffer = '';
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    if (data === '[DONE]') break;
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (parsed.content) {
-                            fullText += parsed.content;
-                            outputDiv.innerHTML = renderMarkdown(fullText);
-                        }
-                    } catch {}
-                }
-            }
+            sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
+                fullText += content;
+                outputDiv.innerHTML = renderMarkdown(fullText);
+            });
         }
 
         outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
