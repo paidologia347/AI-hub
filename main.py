@@ -344,6 +344,8 @@ async def _generate_qwen_image(req: ImageRequest):
         if response.data and response.data[0].b64_json:
             return {"b64_json": response.data[0].b64_json}
         raise HTTPException(status_code=500, detail="No image generated")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
