@@ -95,21 +95,10 @@
                         <h3 class="panel-title">Configurations</h3>
                         <div class="config-group">
                             <label class="config-label">MODEL SELECTOR</label>
-                            <select id="chat-model" class="nexus-select">
-                                <optgroup label="Text Models">
-                                    <option value="qwen-plus">Qwen Plus</option>
-                                    <option value="qwen-max">Qwen Max</option>
-                                    <option value="qwen-turbo">Qwen Turbo</option>
-                                    <option value="qwen3-235b-a22b">Qwen3 235B</option>
-                                    <option value="qwen3-32b">Qwen3 32B</option>
-                                    <option value="qwen3-14b">Qwen3 14B</option>
-                                    <option value="qwq-plus">QwQ Plus (Reasoning)</option>
-                                    <option value="qwen3-coder-plus">Qwen3 Coder Plus</option>
-                                </optgroup>
-                                <optgroup label="Multimodal">
-                                    <option value="qwen3-omni-flash">Qwen3 Omni Flash</option>
-                                </optgroup>
+                            <select id="chat-model" class="nexus-select" data-category="text+multimodal">
+                                <option value="qwen-plus">Qwen Plus</option>
                             </select>
+                            <span class="config-hint" id="chat-model-hint" style="display:none;color:#fbbf24;"></span>
                         </div>
                         <div class="config-group">
                             <label class="config-label">SYSTEM PROMPT</label>
@@ -154,7 +143,12 @@
                                 <span>Select a model and configure parameters</span>
                             </div>
                         </div>
+                        <div id="chat-attachments" class="attachment-strip"></div>
                         <div class="chat-input-area">
+                            <input type="file" id="chat-file-input" multiple style="display:none" onchange="handleChatFileSelect(event)">
+                            <button class="attach-btn" type="button" title="Attach file (image, PDF, DOCX, CSV, ZIP, TXT)" onclick="document.getElementById('chat-file-input').click()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                            </button>
                             <textarea id="chat-input" class="chat-input" rows="1" placeholder="Send a message (Ctrl + Enter to generate...)" onkeydown="handleChatKeydown(event)"></textarea>
                             <button id="send-btn" class="generate-btn" onclick="sendChat()">
                                 <span>Generate</span>
@@ -224,7 +218,13 @@
 
                         <!-- Visual Understanding -->
                         <h3 class="panel-title">VISUAL UNDERSTANDING</h3>
-                        <p class="panel-desc">Analyze images with Qwen3.6 Plus</p>
+                        <p class="panel-desc">Analyze images with vision models</p>
+                        <div class="config-group">
+                            <label class="config-label">VISION MODEL</label>
+                            <select id="vision-model" class="nexus-select">
+                                <option value="qwen3.6-plus">Qwen3.6 Plus</option>
+                            </select>
+                        </div>
                         <div class="config-group">
                             <label class="config-label">IMAGE URL</label>
                             <input type="text" id="vision-url" class="nexus-input" placeholder="Paste image URL to analyze...">
@@ -558,7 +558,7 @@
                     <div class="api-header">
                         <div>
                             <h2 class="api-title">API Management</h2>
-                            <p class="api-desc">Configure and monitor your production keys for AI models</p>
+                            <p class="api-desc">Configure API keys for multiple AI providers. Keys are stored locally in your browser (localStorage).</p>
                         </div>
                     </div>
 
@@ -566,7 +566,7 @@
                     <div class="stats-grid">
                         <div class="api-stat-card">
                             <span class="api-stat-label">TOTAL MODELS</span>
-                            <span class="api-stat-value">18+</span>
+                            <span class="api-stat-value" id="stat-total-models">--</span>
                             <span class="api-stat-sub">All Categories</span>
                         </div>
                         <div class="api-stat-card">
@@ -575,9 +575,24 @@
                             <span class="api-stat-sub">Text, Vision, Image, Video, TTS, ASR, Multimodal</span>
                         </div>
                         <div class="api-stat-card">
+                            <span class="api-stat-label">PROVIDERS</span>
+                            <span class="api-stat-value" id="stat-providers">--</span>
+                            <span class="api-stat-sub">Configured Keys</span>
+                        </div>
+                        <div class="api-stat-card">
                             <span class="api-stat-label">AVG LATENCY</span>
                             <span class="api-stat-value" id="avg-latency">--</span>
                             <span class="api-stat-sub">ms</span>
+                        </div>
+                    </div>
+
+                    <!-- Provider Cards -->
+                    <div class="api-section">
+                        <h3 class="panel-title">API Providers</h3>
+                        <p class="config-hint" style="margin-bottom:16px;">Each provider exposes an OpenAI-compatible endpoint. Set a key to enable models from that provider in the dropdowns.</p>
+                        <div id="provider-cards" class="provider-grid">
+                            <!-- Provider cards populated by JS -->
+                            <div style="opacity:0.5;padding:20px;">Loading providers...</div>
                         </div>
                     </div>
 
@@ -591,49 +606,8 @@
                                 <span>Provider</span>
                                 <span>Status</span>
                             </div>
-                            <!-- Text Models -->
-                            <div class="model-row"><span>Qwen Plus</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>Qwen Max</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>Qwen Turbo</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>QwQ Plus</span><span class="tag reason-tag">Reasoning</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>Qwen3 Coder Plus</span><span class="tag code-tag">Code</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <!-- Vision -->
-                            <div class="model-row"><span>Qwen3.6 Plus</span><span class="tag vision-tag">Vision</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <!-- Multimodal -->
-                            <div class="model-row"><span>Qwen3 Omni Flash</span><span class="tag multi-tag">Multimodal</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <!-- Image -->
-                            <div class="model-row"><span>Wan 2.7 Image Pro</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>Qwen Image Max</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <!-- Video -->
-                            <div class="model-row"><span>Wan 2.7 Text-to-Video</span><span class="tag video-tag">Video</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>Wan 2.7 Image-to-Video</span><span class="tag video-tag">Video</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <!-- TTS -->
-                            <div class="model-row"><span>Qwen3 TTS Flash</span><span class="tag tts-tag">TTS</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <div class="model-row"><span>CosyVoice v3 Flash</span><span class="tag tts-tag">TTS</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                            <!-- ASR -->
-                            <div class="model-row"><span>Fun-ASR</span><span class="tag asr-tag">ASR</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
-                        </div>
-                    </div>
-
-                    <!-- API Config -->
-                    <div class="api-section">
-                        <h3 class="panel-title">API Configuration</h3>
-                        <div class="api-config-grid">
-                            <div class="api-config-card">
-                                <span class="config-label">PROVIDER</span>
-                                <span class="config-display">Alibaba Cloud Model Studio</span>
-                            </div>
-                            <div class="api-config-card">
-                                <span class="config-label">REGION</span>
-                                <span class="config-display">Singapore (ap-southeast-1)</span>
-                            </div>
-                            <div class="api-config-card">
-                                <span class="config-label">BASE URL</span>
-                                <span class="config-display mono">dashscope-intl.aliyuncs.com</span>
-                            </div>
-                            <div class="api-config-card">
-                                <span class="config-label">API KEY</span>
-                                <span class="config-display mono">sk-••••••••••••</span>
+                            <div id="models-table-body">
+                                <!-- Populated by JS from /api/models -->
                             </div>
                         </div>
                     </div>
@@ -650,6 +624,19 @@
         </div>
     </div>
 
+    <script src="/static/js/providers.js"></script>
+    <script src="/static/js/attachments.js"></script>
     <script src="/static/js/app.js"></script>
+    <script>
+      // Bootstrap providers + models, then refresh dropdowns. Runs after the
+      // other scripts so window.populateModelSelect is available.
+      document.addEventListener('DOMContentLoaded', () => {
+          if (typeof window.initProviders === 'function') window.initProviders();
+          const chatModel = document.getElementById('chat-model');
+          if (chatModel) chatModel.addEventListener('change', () => {
+              if (typeof window.refreshAllModelDropdowns === 'function') window.refreshAllModelDropdowns();
+          });
+      });
+    </script>
 </body>
 </html>

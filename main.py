@@ -1,11 +1,13 @@
 import os
+import io
 import json
 import asyncio
 import base64
+import zipfile
 import ipaddress
 import socket
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from urllib.parse import urlparse
 
 import httpcore
@@ -24,6 +26,98 @@ DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 DASHSCOPE_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 DASHSCOPE_NATIVE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
 
+# Multi-provider configuration. Each provider exposes an OpenAI-compatible
+# /v1/chat/completions endpoint at its base_url (or close enough that the
+# AsyncOpenAI client can talk to it). Provider-specific quirks should be
+# handled in get_client_for().
+PROVIDERS: Dict[str, Dict[str, Any]] = {
+    "dashscope": {
+        "name": "Alibaba Cloud DashScope",
+        "base_url": DASHSCOPE_BASE_URL,
+        "env_var": "DASHSCOPE_API_KEY",
+        "key_prefix": "sk-",
+        "key_url": "https://modelstudio.console.alibabacloud.com/",
+    },
+    "nvidia": {
+        "name": "NVIDIA NIM",
+        "base_url": "https://integrate.api.nvidia.com/v1",
+        "env_var": "NVIDIA_API_KEY",
+        "key_prefix": "nvapi-",
+        "key_url": "https://build.nvidia.com/settings/api-keys",
+    },
+    "openai": {
+        "name": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "env_var": "OPENAI_API_KEY",
+        "key_prefix": "sk-",
+        "key_url": "https://platform.openai.com/api-keys",
+    },
+    "anthropic": {
+        "name": "Anthropic Claude",
+        "base_url": "https://api.anthropic.com/v1",
+        "env_var": "ANTHROPIC_API_KEY",
+        "key_prefix": "sk-ant-",
+        "key_url": "https://console.anthropic.com/settings/keys",
+    },
+    "google": {
+        "name": "Google Gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "env_var": "GOOGLE_API_KEY",
+        "key_prefix": "AIza",
+        "key_url": "https://aistudio.google.com/apikey",
+    },
+    "groq": {
+        "name": "Groq",
+        "base_url": "https://api.groq.com/openai/v1",
+        "env_var": "GROQ_API_KEY",
+        "key_prefix": "gsk_",
+        "key_url": "https://console.groq.com/keys",
+    },
+    "deepseek": {
+        "name": "DeepSeek",
+        "base_url": "https://api.deepseek.com/v1",
+        "env_var": "DEEPSEEK_API_KEY",
+        "key_prefix": "sk-",
+        "key_url": "https://platform.deepseek.com/api_keys",
+    },
+    "openrouter": {
+        "name": "OpenRouter",
+        "base_url": "https://openrouter.ai/api/v1",
+        "env_var": "OPENROUTER_API_KEY",
+        "key_prefix": "sk-or-",
+        "key_url": "https://openrouter.ai/keys",
+    },
+}
+
+
+def get_client_for(provider: str, api_key: str = "", base_url_override: str = "") -> AsyncOpenAI:
+    """Return an AsyncOpenAI client for the given provider.
+
+    If ``api_key`` is empty, fall back to the provider's environment variable.
+    If ``base_url_override`` is set (for "custom" provider), use it directly.
+    Raises HTTPException(401) if no key is available.
+    """
+    if provider == "custom":
+        if not base_url_override:
+            raise HTTPException(status_code=400, detail="Custom provider requires base_url")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="API key required for custom provider")
+        return AsyncOpenAI(base_url=base_url_override, api_key=api_key)
+
+    config = PROVIDERS.get(provider)
+    if not config:
+        raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
+
+    final_key = api_key or os.getenv(config.get("env_var", ""), "")
+    if not final_key:
+        raise HTTPException(
+            status_code=401,
+            detail=f"No API key configured for {config['name']}. Set it on the API Management page.",
+        )
+
+    return AsyncOpenAI(base_url=config["base_url"], api_key=final_key)
+
+
 client: AsyncOpenAI | None = None
 http_client: httpx.AsyncClient | None = None
 
@@ -31,50 +125,98 @@ http_client: httpx.AsyncClient | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global client, http_client
-    client = AsyncOpenAI(
-        base_url=DASHSCOPE_BASE_URL,
-        api_key=DASHSCOPE_API_KEY,
-    )
+    # Default DashScope client kept for native (non-OAI-compat) endpoints:
+    # image gen, video gen, TTS, ASR. These remain DashScope-only.
+    if DASHSCOPE_API_KEY:
+        client = AsyncOpenAI(base_url=DASHSCOPE_BASE_URL, api_key=DASHSCOPE_API_KEY)
     http_client = httpx.AsyncClient(timeout=120.0)
     yield
-    await http_client.aclose()
+    if http_client:
+        await http_client.aclose()
 
 
 app = FastAPI(title="AI Hub", version="3.0.0", lifespan=lifespan)
 
+def _m(id_: str, name: str, type_: str, provider: str) -> dict:
+    """Build a model entry. ``provider`` is the provider key from PROVIDERS."""
+    return {"id": id_, "name": name, "type": type_, "provider": provider}
+
+
 AVAILABLE_MODELS = {
     "text": [
-        {"id": "qwen-plus", "name": "Qwen Plus", "type": "Text", "provider": "Alibaba Cloud"},
-        {"id": "qwen-max", "name": "Qwen Max", "type": "Text", "provider": "Alibaba Cloud"},
-        {"id": "qwen-turbo", "name": "Qwen Turbo", "type": "Text", "provider": "Alibaba Cloud"},
-        {"id": "qwen3-235b-a22b", "name": "Qwen3 235B", "type": "Text", "provider": "Alibaba Cloud"},
-        {"id": "qwen3-32b", "name": "Qwen3 32B", "type": "Text", "provider": "Alibaba Cloud"},
-        {"id": "qwen3-14b", "name": "Qwen3 14B", "type": "Text", "provider": "Alibaba Cloud"},
-        {"id": "qwq-plus", "name": "QwQ Plus (Reasoning)", "type": "Reasoning", "provider": "Alibaba Cloud"},
-        {"id": "qwen3-coder-plus", "name": "Qwen3 Coder Plus", "type": "Code", "provider": "Alibaba Cloud"},
+        # DashScope (Alibaba Cloud)
+        _m("qwen-plus", "Qwen Plus", "Text", "dashscope"),
+        _m("qwen-max", "Qwen Max", "Text", "dashscope"),
+        _m("qwen-turbo", "Qwen Turbo", "Text", "dashscope"),
+        _m("qwen3-235b-a22b", "Qwen3 235B", "Text", "dashscope"),
+        _m("qwen3-32b", "Qwen3 32B", "Text", "dashscope"),
+        _m("qwen3-14b", "Qwen3 14B", "Text", "dashscope"),
+        _m("qwq-plus", "QwQ Plus (Reasoning)", "Reasoning", "dashscope"),
+        _m("qwen3-coder-plus", "Qwen3 Coder Plus", "Code", "dashscope"),
+        # NVIDIA NIM
+        _m("deepseek-ai/deepseek-r1", "DeepSeek R1 (Reasoning)", "Reasoning", "nvidia"),
+        _m("deepseek-ai/deepseek-v3.2", "DeepSeek V3.2", "Text", "nvidia"),
+        _m("meta/llama-3.3-70b-instruct", "Llama 3.3 70B Instruct", "Text", "nvidia"),
+        _m("meta/llama-3.1-405b-instruct", "Llama 3.1 405B Instruct", "Text", "nvidia"),
+        _m("meta/llama-3.1-8b-instruct", "Llama 3.1 8B Instruct", "Text", "nvidia"),
+        _m("mistralai/mistral-medium-3.5-128b", "Mistral Medium 3.5 128B", "Text", "nvidia"),
+        _m("mistralai/mixtral-8x7b-instruct-v0.1", "Mixtral 8x7B Instruct", "Text", "nvidia"),
+        _m("nvidia/llama-3.1-nemotron-70b-instruct", "Llama 3.1 Nemotron 70B", "Code", "nvidia"),
+        # OpenAI
+        _m("gpt-4o", "GPT-4o", "Text", "openai"),
+        _m("gpt-4o-mini", "GPT-4o mini", "Text", "openai"),
+        _m("gpt-4.1", "GPT-4.1", "Text", "openai"),
+        _m("o1-preview", "o1-preview (Reasoning)", "Reasoning", "openai"),
+        _m("o1-mini", "o1-mini (Reasoning)", "Reasoning", "openai"),
+        # Anthropic Claude
+        _m("claude-3-5-sonnet-latest", "Claude 3.5 Sonnet", "Text", "anthropic"),
+        _m("claude-3-5-haiku-latest", "Claude 3.5 Haiku", "Text", "anthropic"),
+        _m("claude-3-opus-latest", "Claude 3 Opus", "Text", "anthropic"),
+        # Google Gemini
+        _m("gemini-2.0-flash-exp", "Gemini 2.0 Flash", "Text", "google"),
+        _m("gemini-1.5-pro", "Gemini 1.5 Pro", "Text", "google"),
+        _m("gemini-1.5-flash", "Gemini 1.5 Flash", "Text", "google"),
+        # Groq (fast Llama)
+        _m("llama-3.3-70b-versatile", "Llama 3.3 70B (Groq)", "Text", "groq"),
+        _m("llama-3.1-70b-versatile", "Llama 3.1 70B (Groq)", "Text", "groq"),
+        _m("mixtral-8x7b-32768", "Mixtral 8x7B (Groq)", "Text", "groq"),
+        # DeepSeek direct
+        _m("deepseek-chat", "DeepSeek V3 Chat", "Text", "deepseek"),
+        _m("deepseek-reasoner", "DeepSeek R1 Reasoner", "Reasoning", "deepseek"),
+        # OpenRouter (aggregator — model id includes provider prefix)
+        _m("openai/gpt-4o", "GPT-4o (via OpenRouter)", "Text", "openrouter"),
+        _m("anthropic/claude-3.5-sonnet", "Claude 3.5 Sonnet (via OpenRouter)", "Text", "openrouter"),
+        _m("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B (via OpenRouter)", "Text", "openrouter"),
     ],
     "multimodal": [
-        {"id": "qwen3-omni-flash", "name": "Qwen3 Omni Flash", "type": "Multimodal", "provider": "Alibaba Cloud"},
+        _m("qwen3-omni-flash", "Qwen3 Omni Flash", "Multimodal", "dashscope"),
+        _m("moonshotai/kimi-k2.6", "Kimi K2.6 (1T MoE)", "Multimodal", "nvidia"),
     ],
     "vision": [
-        {"id": "qwen3.6-plus", "name": "Qwen3.6 Plus (Vision)", "type": "Vision", "provider": "Alibaba Cloud"},
+        _m("qwen3.6-plus", "Qwen3.6 Plus (Vision)", "Vision", "dashscope"),
+        _m("meta/llama-3.2-90b-vision-instruct", "Llama 3.2 90B Vision", "Vision", "nvidia"),
+        _m("meta/llama-3.2-11b-vision-instruct", "Llama 3.2 11B Vision", "Vision", "nvidia"),
+        _m("microsoft/phi-3.5-vision-instruct", "Phi 3.5 Vision", "Vision", "nvidia"),
+        _m("gpt-4o", "GPT-4o (Vision)", "Vision", "openai"),
+        _m("claude-3-5-sonnet-latest", "Claude 3.5 Sonnet (Vision)", "Vision", "anthropic"),
+        _m("gemini-1.5-pro", "Gemini 1.5 Pro (Vision)", "Vision", "google"),
     ],
     "image": [
-        {"id": "wan2.6-t2i", "name": "Wan 2.6 Text-to-Image", "type": "Image", "provider": "Alibaba Cloud"},
-        {"id": "wan2.7-image-pro", "name": "Wan 2.7 Image Pro", "type": "Image", "provider": "Alibaba Cloud"},
-        {"id": "wan2.7-image", "name": "Wan 2.7 Image", "type": "Image", "provider": "Alibaba Cloud"},
-        {"id": "qwen-image-max", "name": "Qwen Image Max", "type": "Image", "provider": "Alibaba Cloud"},
+        _m("wan2.6-t2i", "Wan 2.6 Text-to-Image", "Image", "dashscope"),
+        _m("wan2.7-image-pro", "Wan 2.7 Image Pro", "Image", "dashscope"),
+        _m("wan2.7-image", "Wan 2.7 Image", "Image", "dashscope"),
+        _m("qwen-image-max", "Qwen Image Max", "Image", "dashscope"),
     ],
     "video": [
-        {"id": "wan2.7-t2v", "name": "Wan 2.7 Text-to-Video", "type": "Video", "provider": "Alibaba Cloud"},
-        {"id": "wan2.7-i2v", "name": "Wan 2.7 Image-to-Video", "type": "Video", "provider": "Alibaba Cloud"},
+        _m("wan2.7-t2v", "Wan 2.7 Text-to-Video", "Video", "dashscope"),
+        _m("wan2.7-i2v", "Wan 2.7 Image-to-Video", "Video", "dashscope"),
     ],
     "tts": [
-        {"id": "cosyvoice-v3-flash", "name": "CosyVoice v3 Flash", "type": "TTS", "provider": "Alibaba Cloud"},
-        {"id": "qwen3-tts-flash", "name": "Qwen3 TTS Flash", "type": "TTS", "provider": "Alibaba Cloud"},
+        _m("cosyvoice-v3-flash", "CosyVoice v3 Flash", "TTS", "dashscope"),
+        _m("qwen3-tts-flash", "Qwen3 TTS Flash", "TTS", "dashscope"),
     ],
     "asr": [
-        {"id": "fun-asr", "name": "Fun-ASR", "type": "ASR", "provider": "Alibaba Cloud"},
+        _m("fun-asr", "Fun-ASR", "ASR", "dashscope"),
     ],
 }
 
@@ -87,6 +229,12 @@ class ChatRequest(BaseModel):
     system_prompt: str = ""
     temperature: float = 0.7
     stream: bool = True
+    # Multi-provider fields. ``provider`` defaults to dashscope to stay
+    # backwards-compatible. ``api_key`` overrides the env var for this request.
+    # ``base_url`` is used when provider="custom".
+    provider: str = "dashscope"
+    api_key: str = ""
+    base_url: str = ""
 
 
 class VisionRequest(BaseModel):
@@ -94,6 +242,9 @@ class VisionRequest(BaseModel):
     image_url: str
     model: str = "qwen3.6-plus"
     stream: bool = True
+    provider: str = "dashscope"
+    api_key: str = ""
+    base_url: str = ""
 
 
 class MultimodalRequest(BaseModel):
@@ -102,6 +253,9 @@ class MultimodalRequest(BaseModel):
     audio_url: str = ""
     model: str = "qwen3-omni-flash"
     stream: bool = True
+    provider: str = "dashscope"
+    api_key: str = ""
+    base_url: str = ""
 
 
 class ImageRequest(BaseModel):
@@ -110,6 +264,7 @@ class ImageRequest(BaseModel):
     size: str = "1024x1024"
     quality: str = "standard"
     negative_prompt: str = ""
+    api_key: str = ""  # DashScope-only; overrides env var
 
 
 class VideoRequest(BaseModel):
@@ -119,12 +274,14 @@ class VideoRequest(BaseModel):
     duration: int = 5
     resolution: str = "720P"
     ratio: str = "16:9"
+    api_key: str = ""  # DashScope-only; overrides env var
 
 
 class TTSRequest(BaseModel):
     text: str
     provider: str = "qwen3-tts-flash"
     voice: str = "Cherry"
+    api_key: str = ""  # DashScope-only; overrides env var
 
 
 class ContentRequest(BaseModel):
@@ -133,6 +290,15 @@ class ContentRequest(BaseModel):
     model: str = "qwen-plus"
     tone: str = "professional"
     language: str = "id"
+    provider: str = "dashscope"
+    api_key: str = ""
+    base_url: str = ""
+
+
+class ProviderTestRequest(BaseModel):
+    provider: str
+    api_key: str
+    base_url: str = ""
 
 
 # ===== Helper: URL validation (SSRF protection) =====
@@ -240,9 +406,20 @@ async def _validate_and_fetch_audio(url: str) -> bytes:
 
 # ===== Helper: Native API headers =====
 
-def native_headers(async_mode: bool = False) -> dict:
+def _resolve_dashscope_key(api_key: str = "") -> str:
+    """Resolve a DashScope API key from request override or env var."""
+    final = api_key or DASHSCOPE_API_KEY
+    if not final:
+        raise HTTPException(
+            status_code=401,
+            detail="No DashScope API key configured. Set it on the API Management page.",
+        )
+    return final
+
+
+def native_headers(async_mode: bool = False, api_key: str = "") -> dict:
     h = {
-        "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
+        "Authorization": f"Bearer {_resolve_dashscope_key(api_key)}",
         "Content-Type": "application/json",
     }
     if async_mode:
@@ -250,10 +427,10 @@ def native_headers(async_mode: bool = False) -> dict:
     return h
 
 
-async def poll_task(task_id: str, max_wait: int = 300) -> dict:
+async def poll_task(task_id: str, max_wait: int = 300, api_key: str = "") -> dict:
     """Poll an async DashScope task until completion."""
     url = f"{DASHSCOPE_NATIVE_URL}/tasks/{task_id}"
-    headers = {"Authorization": f"Bearer {DASHSCOPE_API_KEY}"}
+    headers = {"Authorization": f"Bearer {_resolve_dashscope_key(api_key)}"}
     for _ in range(max_wait // 3):
         await asyncio.sleep(3)
         resp = await http_client.get(url, headers=headers)
@@ -276,10 +453,72 @@ async def get_models():
     return AVAILABLE_MODELS
 
 
+@app.get("/api/providers")
+async def get_providers():
+    """Return the list of available providers and metadata for the UI.
+
+    Each entry includes whether the server has a fallback env-var key set, so
+    the frontend can hint the user about which providers will work even when
+    no localStorage key is configured.
+    """
+    out = []
+    for key, cfg in PROVIDERS.items():
+        env_var = cfg.get("env_var", "")
+        out.append({
+            "id": key,
+            "name": cfg["name"],
+            "base_url": cfg["base_url"],
+            "key_prefix": cfg.get("key_prefix", ""),
+            "key_url": cfg.get("key_url", ""),
+            "env_set": bool(os.getenv(env_var, "")) if env_var else False,
+        })
+    out.append({
+        "id": "custom",
+        "name": "Custom (OpenAI-compatible)",
+        "base_url": "",
+        "key_prefix": "",
+        "key_url": "",
+        "env_set": False,
+    })
+    return {"providers": out}
+
+
+@app.post("/api/providers/test")
+async def test_provider(req: ProviderTestRequest):
+    """Verify an API key by issuing a tiny ping request.
+
+    Returns ``{"ok": True}`` on success or HTTPException with the upstream
+    error code/message on failure. The request is intentionally cheap (1 token).
+    """
+    try:
+        c = get_client_for(req.provider, req.api_key, req.base_url)
+        # Pick a small/cheap default model per provider for the smoke test.
+        test_models = {
+            "dashscope": "qwen-turbo",
+            "nvidia": "meta/llama-3.1-8b-instruct",
+            "openai": "gpt-4o-mini",
+            "anthropic": "claude-3-5-haiku-latest",
+            "google": "gemini-1.5-flash",
+            "groq": "llama-3.1-8b-instant",
+            "deepseek": "deepseek-chat",
+            "openrouter": "openai/gpt-4o-mini",
+        }
+        model = test_models.get(req.provider, "gpt-4o-mini")
+        resp = await c.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=1,
+        )
+        return {"ok": True, "model": model, "response": (resp.choices[0].message.content or "")[:50]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    if not client:
-        raise HTTPException(status_code=500, detail="AI client not initialized")
+    c = get_client_for(req.provider, req.api_key, req.base_url)
 
     messages = []
     if req.system_prompt:
@@ -288,7 +527,7 @@ async def chat(req: ChatRequest):
 
     if req.stream:
         async def generate():
-            stream = await client.chat.completions.create(
+            stream = await c.chat.completions.create(
                 model=req.model,
                 messages=messages,
                 temperature=req.temperature,
@@ -302,7 +541,7 @@ async def chat(req: ChatRequest):
 
         return StreamingResponse(generate(), media_type="text/event-stream")
 
-    response = await client.chat.completions.create(
+    response = await c.chat.completions.create(
         model=req.model,
         messages=messages,
         temperature=req.temperature,
@@ -312,9 +551,8 @@ async def chat(req: ChatRequest):
 
 @app.post("/api/vision")
 async def vision_analyze(req: VisionRequest):
-    """Analyze an image using Qwen3.6-Plus vision model (OpenAI-compatible)."""
-    if not client:
-        raise HTTPException(status_code=500, detail="AI client not initialized")
+    """Analyze an image using a vision-capable model (OpenAI-compatible)."""
+    c = get_client_for(req.provider, req.api_key, req.base_url)
 
     messages = [
         {
@@ -328,7 +566,7 @@ async def vision_analyze(req: VisionRequest):
 
     if req.stream:
         async def generate():
-            stream = await client.chat.completions.create(
+            stream = await c.chat.completions.create(
                 model=req.model,
                 messages=messages,
                 stream=True,
@@ -341,7 +579,7 @@ async def vision_analyze(req: VisionRequest):
 
         return StreamingResponse(generate(), media_type="text/event-stream")
 
-    response = await client.chat.completions.create(
+    response = await c.chat.completions.create(
         model=req.model,
         messages=messages,
     )
@@ -350,9 +588,8 @@ async def vision_analyze(req: VisionRequest):
 
 @app.post("/api/multimodal")
 async def multimodal_chat(req: MultimodalRequest):
-    """Chat with Qwen3-Omni-Flash multimodal model (text + image/audio)."""
-    if not client:
-        raise HTTPException(status_code=500, detail="AI client not initialized")
+    """Chat with a multimodal model (text + image/audio)."""
+    c = get_client_for(req.provider, req.api_key, req.base_url)
 
     content = []
     if req.image_url:
@@ -368,15 +605,18 @@ async def multimodal_chat(req: MultimodalRequest):
 
     messages = [{"role": "user", "content": content}]
 
+    # ``modalities`` is a DashScope-specific Qwen Omni parameter; only pass it
+    # for that provider/model to avoid 400s from upstreams that don't accept it.
+    create_kwargs: dict = {"model": req.model, "messages": messages}
+    if req.provider == "dashscope" and "omni" in req.model.lower():
+        create_kwargs["modalities"] = ["text"]
+
     if req.stream:
         async def generate():
-            stream = await client.chat.completions.create(
-                model=req.model,
-                messages=messages,
-                stream=True,
-                modalities=["text"],
-                stream_options={"include_usage": True},
-            )
+            stream_kwargs = dict(create_kwargs, stream=True)
+            if req.provider == "dashscope" and "omni" in req.model.lower():
+                stream_kwargs["stream_options"] = {"include_usage": True}
+            stream = await c.chat.completions.create(**stream_kwargs)
             async for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
                     data = json.dumps({"content": chunk.choices[0].delta.content})
@@ -385,11 +625,7 @@ async def multimodal_chat(req: MultimodalRequest):
 
         return StreamingResponse(generate(), media_type="text/event-stream")
 
-    response = await client.chat.completions.create(
-        model=req.model,
-        messages=messages,
-        modalities=["text"],
-    )
+    response = await c.chat.completions.create(**create_kwargs)
     return {"content": response.choices[0].message.content}
 
 
@@ -421,7 +657,7 @@ async def generate_image(req: ImageRequest):
     }
 
     try:
-        resp = await http_client.post(url, json=payload, headers=native_headers())
+        resp = await http_client.post(url, json=payload, headers=native_headers(api_key=req.api_key))
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
@@ -442,11 +678,10 @@ async def generate_image(req: ImageRequest):
 
 async def _generate_qwen_image(req: ImageRequest):
     """Generate image using Qwen-Image-Max via OpenAI-compatible endpoint."""
-    if not client:
-        raise HTTPException(status_code=500, detail="AI client not initialized")
+    c = get_client_for("dashscope", req.api_key)
 
     try:
-        response = await client.images.generate(
+        response = await c.images.generate(
             model="qwen-image-max",
             prompt=req.prompt,
             n=1,
@@ -486,7 +721,7 @@ async def generate_video(req: VideoRequest):
     }
 
     try:
-        resp = await http_client.post(url, json=payload, headers=native_headers(async_mode=True))
+        resp = await http_client.post(url, json=payload, headers=native_headers(async_mode=True, api_key=req.api_key))
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
@@ -501,13 +736,13 @@ async def generate_video(req: VideoRequest):
 
 
 @app.get("/api/video/status/{task_id}")
-async def video_status(task_id: str):
+async def video_status(task_id: str, api_key: str = ""):
     """Check video generation task status."""
     if not http_client:
         raise HTTPException(status_code=500, detail="HTTP client not initialized")
 
     url = f"{DASHSCOPE_NATIVE_URL}/tasks/{task_id}"
-    headers = {"Authorization": f"Bearer {DASHSCOPE_API_KEY}"}
+    headers = {"Authorization": f"Bearer {_resolve_dashscope_key(api_key)}"}
 
     try:
         resp = await http_client.get(url, headers=headers)
@@ -552,7 +787,7 @@ async def text_to_speech(req: TTSRequest):
     }
 
     try:
-        resp = await http_client.post(url, json=payload, headers=native_headers())
+        resp = await http_client.post(url, json=payload, headers=native_headers(api_key=req.api_key))
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
@@ -577,7 +812,11 @@ async def text_to_speech(req: TTSRequest):
 
 
 @app.post("/api/asr")
-async def speech_recognition(audio_url: str = Form(...), model: str = Form("fun-asr")):
+async def speech_recognition(
+    audio_url: str = Form(...),
+    model: str = Form("fun-asr"),
+    api_key: str = Form(""),
+):
     """Transcribe audio using Fun-ASR (async task)."""
     if not http_client:
         raise HTTPException(status_code=500, detail="HTTP client not initialized")
@@ -595,7 +834,7 @@ async def speech_recognition(audio_url: str = Form(...), model: str = Form("fun-
     }
 
     try:
-        resp = await http_client.post(url, json=payload, headers=native_headers(async_mode=True))
+        resp = await http_client.post(url, json=payload, headers=native_headers(async_mode=True, api_key=api_key))
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
@@ -610,13 +849,13 @@ async def speech_recognition(audio_url: str = Form(...), model: str = Form("fun-
 
 
 @app.get("/api/asr/status/{task_id}")
-async def asr_status(task_id: str):
+async def asr_status(task_id: str, api_key: str = ""):
     """Check ASR task status and get transcription result."""
     if not http_client:
         raise HTTPException(status_code=500, detail="HTTP client not initialized")
 
     url = f"{DASHSCOPE_NATIVE_URL}/tasks/{task_id}"
-    headers = {"Authorization": f"Bearer {DASHSCOPE_API_KEY}"}
+    headers = {"Authorization": f"Bearer {_resolve_dashscope_key(api_key)}"}
 
     try:
         resp = await http_client.get(url, headers=headers)
@@ -661,8 +900,7 @@ async def asr_status(task_id: str):
 
 @app.post("/api/content/generate")
 async def generate_content(req: ContentRequest):
-    if not client:
-        raise HTTPException(status_code=500, detail="AI client not initialized")
+    c = get_client_for(req.provider, req.api_key, req.base_url)
 
     prompts = {
         "blog": f"Write a comprehensive blog post about: {req.topic}. Tone: {req.tone}. Language: {req.language}. Include a title, introduction, main sections with subheadings, and conclusion. Use markdown formatting.",
@@ -677,7 +915,7 @@ async def generate_content(req: ContentRequest):
     user_prompt = prompts.get(req.content_type, prompts["blog"])
 
     async def generate():
-        stream = await client.chat.completions.create(
+        stream = await c.chat.completions.create(
             model=req.model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -693,6 +931,173 @@ async def generate_content(req: ContentRequest):
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+# ===== File Attachment =====
+
+# Upper bound on individual file size (10 MB) and aggregate text extraction.
+# Larger files would blow up the chat context window anyway.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_TEXT_CHARS = 200_000
+
+# File extensions handled as plain text.
+TEXT_EXTS = {
+    ".txt", ".md", ".markdown", ".log", ".csv", ".tsv", ".json", ".xml",
+    ".yaml", ".yml", ".toml", ".ini", ".html", ".htm", ".js", ".ts",
+    ".py", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".sh", ".sql",
+}
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+
+
+def _ext(name: str) -> str:
+    if "." not in name:
+        return ""
+    return "." + name.rsplit(".", 1)[-1].lower()
+
+
+def _extract_pdf(data: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError:  # pragma: no cover - optional dep
+        return "[PDF extraction requires `pypdf` (pip install pypdf)]"
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        out = []
+        for page in reader.pages:
+            try:
+                out.append(page.extract_text() or "")
+            except Exception:
+                continue
+        return "\n\n".join(out).strip()
+    except Exception as e:
+        return f"[Failed to parse PDF: {e}]"
+
+
+def _extract_docx(data: bytes) -> str:
+    try:
+        from docx import Document
+    except ImportError:  # pragma: no cover
+        return "[DOCX extraction requires `python-docx` (pip install python-docx)]"
+    try:
+        doc = Document(io.BytesIO(data))
+        return "\n".join(p.text for p in doc.paragraphs).strip()
+    except Exception as e:
+        return f"[Failed to parse DOCX: {e}]"
+
+
+def _extract_xlsx(data: bytes) -> str:
+    try:
+        from openpyxl import load_workbook
+    except ImportError:  # pragma: no cover
+        return "[XLSX extraction requires `openpyxl` (pip install openpyxl)]"
+    try:
+        wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        out = []
+        for sheet in wb.sheetnames:
+            ws = wb[sheet]
+            out.append(f"## Sheet: {sheet}")
+            for row in ws.iter_rows(max_rows=200, values_only=True):
+                out.append("\t".join(str(c) if c is not None else "" for c in row))
+        return "\n".join(out)
+    except Exception as e:
+        return f"[Failed to parse XLSX: {e}]"
+
+
+def _extract_zip(data: bytes) -> str:
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile as e:
+        return f"[Invalid ZIP: {e}]"
+
+    parts: List[str] = []
+    parts.append(f"## ZIP contents ({len(zf.namelist())} files)")
+    for name in zf.namelist()[:50]:  # cap to first 50 entries
+        if name.endswith("/"):
+            parts.append(f"- {name} (directory)")
+            continue
+        info = zf.getinfo(name)
+        if info.file_size > 1024 * 1024:  # skip files >1MB inside zip
+            parts.append(f"- {name} ({info.file_size} bytes — skipped)")
+            continue
+        ext = _ext(name)
+        try:
+            inner = zf.read(name)
+        except Exception as e:
+            parts.append(f"- {name} (read error: {e})")
+            continue
+        parts.append(f"\n### {name}")
+        if ext in TEXT_EXTS:
+            try:
+                parts.append(inner.decode("utf-8", errors="replace"))
+            except Exception:
+                parts.append(f"[binary file, {len(inner)} bytes]")
+        elif ext == ".pdf":
+            parts.append(_extract_pdf(inner))
+        elif ext == ".docx":
+            parts.append(_extract_docx(inner))
+        else:
+            parts.append(f"[unsupported file type {ext}, {len(inner)} bytes]")
+    return "\n".join(parts)
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Receive an uploaded file and return text content (or base64 image data URI).
+
+    Returns ``{kind: "text"|"image", filename, size, content}`` where content is
+    either the extracted text (truncated to MAX_TEXT_CHARS) or a data URI for
+    image files. Used by the chat UI to attach docs/images to a prompt.
+    """
+    name = file.filename or "uploaded"
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+        )
+
+    ext = _ext(name)
+
+    if ext in IMAGE_EXTS:
+        mime_map = {".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg", ".webp": "webp", ".gif": "gif", ".bmp": "bmp"}
+        mime = mime_map.get(ext, "png")
+        b64 = base64.b64encode(data).decode("ascii")
+        return {
+            "kind": "image",
+            "filename": name,
+            "size": len(data),
+            "content": f"data:image/{mime};base64,{b64}",
+        }
+
+    if ext == ".pdf":
+        text = _extract_pdf(data)
+    elif ext == ".docx":
+        text = _extract_docx(data)
+    elif ext in (".xlsx", ".xlsm"):
+        text = _extract_xlsx(data)
+    elif ext == ".zip":
+        text = _extract_zip(data)
+    elif ext in TEXT_EXTS or not ext:
+        text = data.decode("utf-8", errors="replace")
+    else:
+        # Best effort: try as text, otherwise reject.
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Unsupported file type: {ext or 'unknown'}",
+            )
+
+    if len(text) > MAX_TEXT_CHARS:
+        text = text[:MAX_TEXT_CHARS] + f"\n\n[... truncated, original was {len(text)} chars]"
+
+    return {
+        "kind": "text",
+        "filename": name,
+        "size": len(data),
+        "content": text,
+    }
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
