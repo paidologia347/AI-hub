@@ -110,36 +110,74 @@ function addMessage(role, content) {
 async function sendChat() {
     if (isStreaming) return;
     const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    if (!message) return;
+    const userMessage = input.value.trim();
+    const attachList = (window.attachments && window.attachments.chat) || [];
+    if (!userMessage && attachList.length === 0) return;
 
     input.value = '';
-    addMessage('user', message);
 
     const model = document.getElementById('chat-model').value;
     const systemPrompt = document.getElementById('system-prompt').value;
     const temperature = parseFloat(document.getElementById('chat-temp').value);
-    const imageUrl = document.getElementById('chat-image-url').value.trim();
+
+    // Combine the user's typed message with any extracted file text. If an
+    // image was attached, route to /api/vision (or /api/multimodal for omni).
+    const built = (typeof window.buildChatPayload === 'function')
+        ? window.buildChatPayload('chat', userMessage)
+        : { prompt: userMessage, imageDataUri: '' };
+    // Fallback: if no image attached, allow the existing URL input to act as one.
+    if (!built.imageDataUri) {
+        const urlInput = document.getElementById('chat-image-url');
+        if (urlInput && urlInput.value.trim()) built.imageDataUri = urlInput.value.trim();
+    }
+
+    const displayMsg = userMessage + (attachList.length > 0
+        ? `\n\n_(with ${attachList.length} attachment${attachList.length > 1 ? 's' : ''})_`
+        : '');
+    addMessage('user', displayMsg);
+
+    const provider = (typeof window.providerForModel === 'function')
+        ? window.providerForModel(model) : 'dashscope';
+    const providerPayload = (typeof window.getProviderPayload === 'function')
+        ? window.getProviderPayload(provider) : {};
 
     const msgDiv = addMessage('assistant', '<span style="opacity:0.4">Generating...</span>');
     const bubble = msgDiv.querySelector('.msg-bubble');
 
     isStreaming = true;
     document.getElementById('send-btn').disabled = true;
-    addLog(`Chat request: ${model}`);
+    addLog(`Chat request: ${model} (${provider})`);
 
     const startTime = Date.now();
 
     try {
         let endpoint = '/api/chat';
-        let body = { message, model, system_prompt: systemPrompt, temperature, stream: true };
+        let body = {
+            message: built.prompt,
+            model,
+            system_prompt: systemPrompt,
+            temperature,
+            stream: true,
+            ...providerPayload,
+        };
 
+        // Routing based on model + attachments:
+        //   1. Qwen Omni: /api/multimodal (handles text+image+audio)
+        //   2. Image attached + non-omni model: /api/vision
+        //   3. Otherwise: /api/chat
         if (model === 'qwen3-omni-flash') {
             endpoint = '/api/multimodal';
-            body = { message, image_url: imageUrl || '', model, stream: true };
-        } else if (imageUrl) {
+            body = { message: built.prompt, image_url: built.imageDataUri, model, stream: true, ...providerPayload };
+        } else if (built.imageDataUri) {
             endpoint = '/api/vision';
-            body = { message, image_url: imageUrl, model: 'qwen3.6-plus', stream: true };
+            // Pick a vision model on the same provider when possible.
+            const visionModel = pickVisionModelForProvider(provider) || 'qwen3.6-plus';
+            const visionProvider = (typeof window.providerForModel === 'function')
+                ? window.providerForModel(visionModel) : 'dashscope';
+            const visionPayload = (typeof window.getProviderPayload === 'function')
+                ? window.getProviderPayload(visionProvider) : {};
+            body = { message: built.prompt, image_url: built.imageDataUri, model: visionModel, stream: true, ...visionPayload };
+            addLog(`Vision routed to ${visionModel} (${visionProvider})`);
         }
 
         const response = await fetch(endpoint, {
@@ -181,8 +219,62 @@ async function sendChat() {
     } finally {
         isStreaming = false;
         document.getElementById('send-btn').disabled = false;
+        if (typeof window.clearAttachments === 'function') window.clearAttachments('chat');
     }
 }
+
+// Pick a vision-capable model id from the same provider as ``provider``.
+// Falls back to qwen3.6-plus (DashScope) when none is configured.
+function pickVisionModelForProvider(provider) {
+    const cat = (window.AI_MODELS && window.AI_MODELS.vision) || [];
+    const sameProvider = cat.find(m => m.provider === provider);
+    if (sameProvider) return sameProvider.id;
+    // Find any vision model on a configured provider.
+    for (const m of cat) {
+        if (typeof window.getProviderPayload === 'function') {
+            const p = window.getProviderPayload(m.provider);
+            if (p.api_key) return m.id;
+        }
+    }
+    return cat[0] ? cat[0].id : 'qwen3.6-plus';
+}
+
+// Refresh all model dropdowns on the page based on currently configured
+// providers. Called on init and after any provider key change.
+window.refreshAllModelDropdowns = function () {
+    // Only repopulate the dynamic OAI-compatible dropdowns. Native DashScope
+    // selects (image/video/tts) keep their hardcoded options because those
+    // endpoints are DashScope-only.
+    const targets = [
+        { id: 'chat-model', categories: ['text', 'multimodal'] },
+        { id: 'vision-model', categories: ['vision'] },
+    ];
+    for (const t of targets) {
+        const el = document.getElementById(t.id);
+        if (el && typeof window.populateModelSelect === 'function') {
+            const prev = el.value;
+            window.populateModelSelect(el, t.categories, { onlyConfigured: true });
+            if (prev && [...el.options].some(o => o.value === prev)) el.value = prev;
+            el.dispatchEvent(new Event('change'));
+        }
+    }
+    // Show a hint on the chat model selector if the chosen model is from a
+    // provider without a configured key.
+    const chatHint = document.getElementById('chat-model-hint');
+    const chatModel = document.getElementById('chat-model');
+    if (chatHint && chatModel && chatModel.value && typeof window.providerForModel === 'function') {
+        const prov = window.providerForModel(chatModel.value);
+        const payload = window.getProviderPayload(prov);
+        const provInfo = (window.PROVIDERS || []).find(p => p.id === prov);
+        const hasKey = !!payload.api_key || !!(provInfo && provInfo.env_set);
+        if (!hasKey) {
+            chatHint.style.display = 'block';
+            chatHint.textContent = `⚠ Set a ${(provInfo && provInfo.name) || prov} API key on the API Management page.`;
+        } else {
+            chatHint.style.display = 'none';
+        }
+    }
+};
 
 // ===== TTS =====
 function updateTTSVoices() {
@@ -225,10 +317,12 @@ async function generateTTS() {
     addLog(`TTS request: ${provider}`);
 
     try {
+        const dsKey = (typeof window.getProviderPayload === 'function')
+            ? (window.getProviderPayload('dashscope').api_key || '') : '';
         const response = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, provider, voice }),
+            body: JSON.stringify({ text, provider, voice, api_key: dsKey }),
         });
 
         if (!response.ok) {
@@ -272,10 +366,14 @@ async function generateContent() {
     addLog(`Content request: ${contentType}`);
 
     try {
+        const provider = (typeof window.providerForModel === 'function')
+            ? window.providerForModel('qwen-plus') : 'dashscope';
+        const providerPayload = (typeof window.getProviderPayload === 'function')
+            ? window.getProviderPayload(provider) : {};
         const response = await fetch('/api/content/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic, content_type: contentType, tone, language }),
+            body: JSON.stringify({ topic, content_type: contentType, tone, language, ...providerPayload }),
         });
 
         if (!response.ok) {
@@ -331,10 +429,12 @@ async function generateImage() {
     addLog(`Image request: ${model}`);
 
     try {
+        const dsKey = (typeof window.getProviderPayload === 'function')
+            ? (window.getProviderPayload('dashscope').api_key || '') : '';
         const response = await fetch('/api/image/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, model, size }),
+            body: JSON.stringify({ prompt, model, size, api_key: dsKey }),
         });
 
         if (!response.ok) {
@@ -398,10 +498,15 @@ async function analyzeImage() {
     addLog('Vision analysis: qwen3.6-plus');
 
     try {
+        const visionModel = (document.getElementById('vision-model') && document.getElementById('vision-model').value) || 'qwen3.6-plus';
+        const provider = (typeof window.providerForModel === 'function')
+            ? window.providerForModel(visionModel) : 'dashscope';
+        const providerPayload = (typeof window.getProviderPayload === 'function')
+            ? window.getProviderPayload(provider) : {};
         const response = await fetch('/api/vision', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: question, image_url: imageUrl, stream: true }),
+            body: JSON.stringify({ message: question, image_url: imageUrl, model: visionModel, stream: true, ...providerPayload }),
         });
 
         if (!response.ok) {
@@ -484,6 +589,9 @@ async function generateVideo() {
             body.image_url = imageUrl;
         }
 
+        const dsKey = (typeof window.getProviderPayload === 'function')
+            ? (window.getProviderPayload('dashscope').api_key || '') : '';
+        body.api_key = dsKey;
         const response = await fetch('/api/video/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -523,7 +631,9 @@ async function pollVideoStatus(taskId) {
         await new Promise(r => setTimeout(r, 3000));
 
         try {
-            const resp = await fetch(`/api/video/status/${taskId}`);
+            const dsKey = (typeof window.getProviderPayload === 'function')
+                ? (window.getProviderPayload('dashscope').api_key || '') : '';
+            const resp = await fetch(`/api/video/status/${taskId}` + (dsKey ? `?api_key=${encodeURIComponent(dsKey)}` : ''));
             const data = await resp.json();
 
             if (data.status === 'SUCCEEDED') {
@@ -576,6 +686,9 @@ async function transcribeAudio() {
         const formData = new FormData();
         formData.append('audio_url', audioUrl);
         formData.append('model', model);
+        const dsKey = (typeof window.getProviderPayload === 'function')
+            ? (window.getProviderPayload('dashscope').api_key || '') : '';
+        if (dsKey) formData.append('api_key', dsKey);
 
         const response = await fetch('/api/asr', {
             method: 'POST',
@@ -615,7 +728,9 @@ async function pollASRStatus(taskId) {
         await new Promise(r => setTimeout(r, 3000));
 
         try {
-            const resp = await fetch(`/api/asr/status/${taskId}`);
+            const dsKey = (typeof window.getProviderPayload === 'function')
+                ? (window.getProviderPayload('dashscope').api_key || '') : '';
+            const resp = await fetch(`/api/asr/status/${taskId}` + (dsKey ? `?api_key=${encodeURIComponent(dsKey)}` : ''));
             const data = await resp.json();
 
             if (data.status === 'SUCCEEDED') {
