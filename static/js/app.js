@@ -135,6 +135,9 @@ async function sendChat() {
         ? `\n\n_(with ${attachList.length} attachment${attachList.length > 1 ? 's' : ''})_`
         : '');
     addMessage('user', displayMsg);
+    if (typeof window.recordChatMessage === 'function') {
+        window.recordChatMessage('user', escapeHtml(displayMsg));
+    }
 
     const provider = (typeof window.providerForModel === 'function')
         ? window.providerForModel(model) : 'dashscope';
@@ -214,6 +217,9 @@ async function sendChat() {
         document.getElementById('stat-latency').textContent = `${latency}ms`;
         document.getElementById('stat-tokens').textContent = `~${Math.ceil(fullText.length / 4)}`;
         addLog(`Response: ${latency}ms, ~${Math.ceil(fullText.length / 4)} tokens`);
+        if (typeof window.recordChatMessage === 'function' && fullText) {
+            window.recordChatMessage('assistant', bubble.innerHTML);
+        }
     } catch (err) {
         bubble.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
     } finally {
@@ -451,13 +457,26 @@ async function generateImage() {
         const item = document.createElement('div');
         item.className = 'gallery-item';
         const img = document.createElement('img');
-        if (data.url) {
-            img.src = data.url;
-        } else if (data.b64_json) {
-            img.src = `data:image/png;base64,${data.b64_json}`;
-        }
+        let imgSrc = '';
+        if (data.url) imgSrc = data.url;
+        else if (data.b64_json) imgSrc = `data:image/png;base64,${data.b64_json}`;
+        img.src = imgSrc;
         img.alt = prompt;
         item.appendChild(img);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'gallery-overlay';
+        const dlBtn = document.createElement('button');
+        dlBtn.className = 'gallery-action-btn';
+        dlBtn.title = 'Download image';
+        dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>';
+        dlBtn.onclick = (e) => {
+            e.stopPropagation();
+            const filename = `aihub-image-${Date.now()}.png`;
+            downloadUrl(imgSrc, filename);
+        };
+        overlay.appendChild(dlBtn);
+        item.appendChild(overlay);
         grid.prepend(item);
 
         imageCount++;
@@ -640,6 +659,8 @@ async function pollVideoStatus(taskId) {
                 statusDiv.classList.add('hidden');
                 resultDiv.classList.remove('hidden');
                 player.src = data.video_url;
+                const dlBtn = document.getElementById('video-download-btn');
+                if (dlBtn) dlBtn.style.display = '';
                 addLog('Video generated successfully');
                 return;
             }
@@ -853,7 +874,154 @@ function copyMarketing() {
     showToast('Marketing copy copied!');
 }
 
+// ===== Download Helpers =====
+// downloadUrl: triggers a browser download for any URL. Tries the simple
+// <a download=...> path first, then falls back to fetching the resource as
+// a Blob (needed for cross-origin URLs from DashScope OSS).
+window.downloadUrl = async function (url, filename) {
+    if (!url) { showToast('Nothing to download'); return; }
+    try {
+        if (url.startsWith('data:') || url.startsWith('blob:')) {
+            triggerDownload(url, filename);
+            return;
+        }
+        // Cross-origin: fetch as blob so the file actually saves with the
+        // chosen filename instead of opening in a new tab.
+        const resp = await fetch(url, { mode: 'cors' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const blob = await resp.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        triggerDownload(objectUrl, filename);
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (err) {
+        // CORS-blocked fallback: open in new tab and let the user save.
+        window.open(url, '_blank', 'noopener');
+        addLog(`Download fallback (new tab): ${err.message}`);
+    }
+};
+
+function triggerDownload(url, filename) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || `aihub-${Date.now()}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+window.downloadVideo = function () {
+    const player = document.getElementById('video-player');
+    if (!player || !player.src) { showToast('No video to download'); return; }
+    window.downloadUrl(player.src, `aihub-video-${Date.now()}.mp4`);
+};
+
+window.downloadTTS = function () {
+    const audio = document.getElementById('tts-audio');
+    if (!audio || !audio.src) { showToast('No audio to download'); return; }
+    window.downloadUrl(audio.src, `aihub-tts-${Date.now()}.mp3`);
+};
+
+// ===== Chat History (localStorage) =====
+// Persists Text Generation messages so a page reload keeps the conversation.
+// Stored as { v: 1, messages: [{ role, html }] } under a single key.
+const CHAT_HISTORY_KEY = 'aihub.chatHistory.text';
+const CHAT_HISTORY_LIMIT = 50;
+const CHAT_HISTORY_MAX_BYTES = 500 * 1024;
+
+function loadChatHistory() {
+    try {
+        const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+        if (!raw) return [];
+        const data = JSON.parse(raw);
+        return Array.isArray(data.messages) ? data.messages : [];
+    } catch { return []; }
+}
+
+function saveChatHistory(messages) {
+    try {
+        const trimmed = messages.slice(-CHAT_HISTORY_LIMIT);
+        const payload = JSON.stringify({ v: 1, messages: trimmed });
+        if (payload.length > CHAT_HISTORY_MAX_BYTES) {
+            // Drop oldest until size fits.
+            while (trimmed.length > 1 && JSON.stringify({ v: 1, messages: trimmed }).length > CHAT_HISTORY_MAX_BYTES) {
+                trimmed.shift();
+            }
+            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify({ v: 1, messages: trimmed }));
+        } else {
+            localStorage.setItem(CHAT_HISTORY_KEY, payload);
+        }
+    } catch (err) {
+        console.warn('Chat history save failed', err);
+    }
+}
+
+function appendToChatHistory(role, html) {
+    const messages = loadChatHistory();
+    messages.push({ role, html, ts: Date.now() });
+    saveChatHistory(messages);
+    updateChatHistoryInfo();
+}
+
+function updateChatHistoryInfo() {
+    const info = document.getElementById('chat-history-info');
+    if (!info) return;
+    const count = loadChatHistory().length;
+    info.textContent = count > 0 ? `${count} message${count > 1 ? 's' : ''} saved` : '';
+}
+
+function restoreChatHistory() {
+    const messages = loadChatHistory();
+    if (messages.length === 0) {
+        updateChatHistoryInfo();
+        return;
+    }
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    const placeholder = container.querySelector('.chat-placeholder');
+    if (placeholder) placeholder.remove();
+
+    for (const m of messages) {
+        const div = document.createElement('div');
+        div.className = `message ${m.role}`;
+        const avatarText = m.role === 'user' ? 'U' : 'AI';
+        div.innerHTML = `
+            <div class="msg-avatar">${avatarText}</div>
+            <div class="msg-bubble">${m.html}</div>
+        `;
+        container.appendChild(div);
+        if (m.role === 'assistant') {
+            div.querySelectorAll('pre code').forEach(block => {
+                if (window.hljs) hljs.highlightElement(block);
+            });
+        }
+    }
+    container.scrollTop = container.scrollHeight;
+    updateChatHistoryInfo();
+}
+
+window.startNewChat = function () {
+    if (!confirm('Clear chat history? This cannot be undone.')) return;
+    try { localStorage.removeItem(CHAT_HISTORY_KEY); } catch {}
+    const container = document.getElementById('chat-messages');
+    if (container) {
+        container.innerHTML = `
+            <div class="chat-placeholder">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                <p>Send a message to start generating</p>
+                <span>Select a model and configure parameters</span>
+            </div>`;
+    }
+    updateChatHistoryInfo();
+    addLog('Chat history cleared');
+};
+
+// Expose for sendChat() to call.
+window.recordChatMessage = function (role, html) {
+    appendToChatHistory(role, html);
+};
+
 // ===== Initialize =====
 updateTTSVoices();
 updateMarketingTemplate();
+restoreChatHistory();
 addLog('AI Hub v3.0 initialized');

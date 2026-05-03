@@ -136,6 +136,13 @@
 
                     <!-- Chat Area -->
                     <div class="chat-area">
+                        <div class="chat-toolbar">
+                            <button class="chat-toolbar-btn" type="button" onclick="startNewChat()" title="Clear chat history">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+                                <span>New Chat</span>
+                            </button>
+                            <span class="chat-toolbar-info" id="chat-history-info"></span>
+                        </div>
                         <div class="chat-messages" id="chat-messages">
                             <div class="chat-placeholder">
                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
@@ -324,6 +331,7 @@
                         <div id="video-result" class="hidden">
                             <div class="result-header">
                                 <span class="panel-title">Generated Video</span>
+                                <button id="video-download-btn" class="copy-btn" onclick="downloadVideo()" style="display:none">Download</button>
                             </div>
                             <video id="video-player" controls class="video-player"></video>
                         </div>
@@ -466,6 +474,7 @@
                         </div>
                         <div id="tts-result" class="hidden">
                             <audio id="tts-audio" controls class="audio-player"></audio>
+                            <button id="tts-download-btn" class="copy-btn" onclick="downloadTTS()" style="margin-top:8px">Download Audio</button>
                         </div>
 
                         <div class="config-divider"></div>
