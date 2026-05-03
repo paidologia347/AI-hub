@@ -96,6 +96,22 @@ const I18N_DICT = {
         confirm_clear_history: 'Hapus riwayat chat? Tindakan ini tidak dapat dibatalkan.',
         msg_chat_count_one: 'pesan tersimpan',
         msg_chat_count_many: 'pesan tersimpan',
+
+        // Settings dashboard
+        settings_title: 'Pengaturan Dashboard',
+        settings_desc: 'Tempel API key untuk tiap penyedia. Kunci hanya disimpan di browser Anda (localStorage) dan tidak pernah disimpan di server.',
+        settings_banner_title: 'Cara menambahkan API key:',
+        settings_banner_step1: 'Klik "Get key →" pada provider yang Anda inginkan, login, lalu salin kunci dari console mereka.',
+        settings_banner_step2: 'Tempel ke kotak input pada kartu provider (atau klik 📌 Tempel).',
+        settings_banner_step3: 'Klik tombol Simpan. Opsional klik tombol Tes untuk verifikasi kunci berfungsi.',
+        settings_providers_title: 'Penyedia API',
+        settings_providers_hint: 'Tiap provider menyediakan endpoint kompatibel-OpenAI. Set kunci untuk mengaktifkan modelnya di dropdown.',
+        settings_loading: 'Memuat penyedia...',
+        settings_models_title: 'Model Tersedia',
+        stat_total_models_sub: 'Semua Kategori',
+        stat_capabilities_sub: 'Teks, Visi, Gambar, Video, TTS, ASR, Multimodal',
+        stat_providers_sub: 'Kunci Terkonfigurasi',
+        btn_paste: 'Tempel dari clipboard',
     },
     en: {
         nav_text_generation: 'Text Generation',
@@ -180,6 +196,22 @@ const I18N_DICT = {
         confirm_clear_history: 'Clear chat history? This cannot be undone.',
         msg_chat_count_one: 'message saved',
         msg_chat_count_many: 'messages saved',
+
+        // Settings dashboard
+        settings_title: 'Settings Dashboard',
+        settings_desc: 'Paste your API keys for each provider below. Keys are stored only in your browser (localStorage) and never sent anywhere except the provider you\u2019re calling.',
+        settings_banner_title: 'How to add an API key:',
+        settings_banner_step1: 'Click "Get key →" on the provider you want, sign in, and copy the key from their console.',
+        settings_banner_step2: 'Paste it into the input box on the matching card (or click 📌 Paste).',
+        settings_banner_step3: 'Click the Save button. Optionally click Test to verify the key works.',
+        settings_providers_title: 'API Providers',
+        settings_providers_hint: 'Each provider exposes an OpenAI-compatible endpoint. Set a key to enable models from that provider in the dropdowns.',
+        settings_loading: 'Loading providers...',
+        settings_models_title: 'Available Models',
+        stat_total_models_sub: 'All Categories',
+        stat_capabilities_sub: 'Text, Vision, Image, Video, TTS, ASR, Multimodal',
+        stat_providers_sub: 'Configured Keys',
+        btn_paste: 'Paste from clipboard',
     },
 };
 

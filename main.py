@@ -22,7 +22,23 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
+
+def _clean_env(name: str) -> str:
+    """Read an env var and strip whitespace, BOM, and surrounding quotes.
+
+    Defensive against `.env` files saved with PowerShell `Out-File -Encoding utf8`
+    (which prepends a UTF-8 BOM) or with quoted values like `KEY="sk-..."`.
+    """
+    val = os.getenv(name, "") or ""
+    # Strip BOM (rare but happens when the BOM lands inside the value).
+    val = val.lstrip("\ufeff")
+    val = val.strip()
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+        val = val[1:-1].strip()
+    return val
+
+
+DASHSCOPE_API_KEY = _clean_env("DASHSCOPE_API_KEY")
 DASHSCOPE_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 DASHSCOPE_NATIVE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
 
@@ -108,7 +124,12 @@ def get_client_for(provider: str, api_key: str = "", base_url_override: str = ""
     if not config:
         raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
 
-    final_key = api_key or os.getenv(config.get("env_var", ""), "")
+    # Strip whitespace/quotes from request-supplied keys too — clipboard
+    # paste sometimes includes a trailing newline.
+    api_key = (api_key or "").strip()
+    if len(api_key) >= 2 and api_key[0] == api_key[-1] and api_key[0] in ("'", '"'):
+        api_key = api_key[1:-1].strip()
+    final_key = api_key or _clean_env(config.get("env_var", ""))
     if not final_key:
         raise HTTPException(
             status_code=401,
@@ -408,6 +429,9 @@ async def _validate_and_fetch_audio(url: str) -> bytes:
 
 def _resolve_dashscope_key(api_key: str = "") -> str:
     """Resolve a DashScope API key from request override or env var."""
+    api_key = (api_key or "").strip().lstrip("\ufeff")
+    if len(api_key) >= 2 and api_key[0] == api_key[-1] and api_key[0] in ("'", '"'):
+        api_key = api_key[1:-1].strip()
     final = api_key or DASHSCOPE_API_KEY
     if not final:
         raise HTTPException(
