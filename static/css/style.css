@@ -1,5 +1,6 @@
 /* ===== NEXUS AI CORE - Design System ===== */
-:root {
+:root,
+[data-theme="dark"] {
     --bg-primary: #0a0e14;
     --bg-secondary: #0f1419;
     --bg-tertiary: #141a22;
@@ -26,6 +27,25 @@
     --radius: 8px;
     --radius-sm: 6px;
     --radius-lg: 12px;
+}
+
+[data-theme="light"] {
+    --bg-primary: #f7f9fc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #eef2f7;
+    --bg-card: #ffffff;
+    --bg-hover: #e8eef7;
+    --bg-input: #f1f5f9;
+    --border: rgba(15, 76, 117, 0.12);
+    --border-hover: rgba(15, 76, 117, 0.28);
+    --border-active: rgba(15, 76, 117, 0.5);
+    --accent: #0284c7;
+    --accent-glow: rgba(2, 132, 199, 0.12);
+    --accent-dim: rgba(2, 132, 199, 0.7);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --text-accent: #0284c7;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1412,4 +1432,35 @@ html, body {
     background: var(--accent);
     color: #000;
     border-color: var(--accent);
+}
+
+/* === Topbar text button (lang toggle) === */
+.topbar-btn-text {
+    width: auto !important;
+    min-width: 32px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.topbar-btn-text:hover { color: var(--accent); }
+
+/* Light-theme code block tweaks (the github-dark highlight.js stylesheet
+   stays loaded; we slightly soften its background so it doesn't look harsh
+   on a white page) */
+[data-theme="light"] pre code.hljs {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-radius: 6px;
+}
+
+[data-theme="light"] .msg-bubble pre {
+    background: #1e293b;
+}
+
+[data-theme="light"] .gallery-action-btn {
+    background: rgba(15, 23, 42, 0.75);
+    color: #fff;
 }
