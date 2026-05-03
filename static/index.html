@@ -10,6 +10,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="/static/css/style.css">
+    <script>
+      // Apply theme + lang as early as possible to avoid a flash of wrong theme.
+      (function () {
+        try {
+          const t = localStorage.getItem('aihub.theme');
+          document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+          const l = localStorage.getItem('aihub.lang');
+          document.documentElement.setAttribute('data-lang', l === 'en' ? 'en' : 'id');
+        } catch {}
+      })();
+    </script>
 </head>
 <body>
     <div class="app-layout">
@@ -28,37 +39,37 @@
             <nav class="sidebar-nav">
                 <a class="nav-item active" data-page="text-generation" onclick="switchPage('text-generation')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                    <span>Text Generation</span>
+                    <span data-i18n="nav_text_generation">Text Generation</span>
                 </a>
                 <a class="nav-item" data-page="image-studio" onclick="switchPage('image-studio')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <span>Image Studio</span>
+                    <span data-i18n="nav_image_studio">Image Studio</span>
                 </a>
                 <a class="nav-item" data-page="video-engine" onclick="switchPage('video-engine')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <span>Video Engine</span>
+                    <span data-i18n="nav_video_engine">Video Engine</span>
                 </a>
                 <a class="nav-item" data-page="audio-lab" onclick="switchPage('audio-lab')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/></svg>
-                    <span>Audio Lab</span>
+                    <span data-i18n="nav_audio_lab">Audio Lab</span>
                 </a>
                 <a class="nav-item" data-page="api-management" onclick="switchPage('api-management')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                    <span>API Management</span>
+                    <span data-i18n="nav_api_management">API Management</span>
                 </a>
             </nav>
 
             <div class="sidebar-footer">
                 <div class="status-indicator">
                     <span class="status-dot online"></span>
-                    <span class="status-text">Online</span>
+                    <span class="status-text" data-i18n="sidebar_status_online">Online</span>
                 </div>
                 <div class="sidebar-links">
-                    <a href="https://www.alibabacloud.com/help/en/model-studio/" target="_blank" class="sidebar-link">Documentation</a>
-                    <a href="#" class="sidebar-link" onclick="switchPage('api-management')">Settings</a>
+                    <a href="https://www.alibabacloud.com/help/en/model-studio/" target="_blank" class="sidebar-link" data-i18n="sidebar_link_docs">Documentation</a>
+                    <a href="#" class="sidebar-link" data-i18n="sidebar_link_settings" onclick="switchPage('api-management')">Settings</a>
                 </div>
                 <div class="usage-stats">
-                    <span class="usage-label">POWERED BY</span>
+                    <span class="usage-label" data-i18n="sidebar_powered_by">POWERED BY</span>
                     <span class="usage-value">Alibaba Cloud Model Studio</span>
                 </div>
             </div>
@@ -71,17 +82,22 @@
                 <div class="topbar-left">
                     <span class="topbar-title">AI Hub</span>
                     <div class="topbar-tabs">
-                        <button class="topbar-tab active" data-page="text-generation" onclick="switchPage('text-generation')">Text Generation</button>
-                        <button class="topbar-tab" data-page="image-studio" onclick="switchPage('image-studio')">Image Studio</button>
-                        <button class="topbar-tab" data-page="video-engine" onclick="switchPage('video-engine')">Video Engine</button>
-                        <button class="topbar-tab" data-page="audio-lab" onclick="switchPage('audio-lab')">Audio Lab</button>
+                        <button class="topbar-tab active" data-page="text-generation" data-i18n="nav_text_generation" onclick="switchPage('text-generation')">Text Generation</button>
+                        <button class="topbar-tab" data-page="image-studio" data-i18n="nav_image_studio" onclick="switchPage('image-studio')">Image Studio</button>
+                        <button class="topbar-tab" data-page="video-engine" data-i18n="nav_video_engine" onclick="switchPage('video-engine')">Video Engine</button>
+                        <button class="topbar-tab" data-page="audio-lab" data-i18n="nav_audio_lab" onclick="switchPage('audio-lab')">Audio Lab</button>
                     </div>
                 </div>
                 <div class="topbar-right">
-                    <button class="topbar-btn" title="Settings" onclick="switchPage('api-management')">
+                    <button id="theme-toggle-btn" class="topbar-btn" data-i18n-title="topbar_theme" title="Toggle theme" onclick="toggleTheme()">
+                        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+                    </button>
+                    <button id="lang-toggle-btn" class="topbar-btn topbar-btn-text" data-i18n-title="topbar_lang" title="Toggle language" onclick="toggleLang()">ID</button>
+                    <button class="topbar-btn" data-i18n-title="topbar_settings" title="Settings" onclick="switchPage('api-management')">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
-                    <button class="topbar-btn" title="Notifications">
+                    <button class="topbar-btn" data-i18n-title="topbar_notifications" title="Notifications">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     </button>
                 </div>
@@ -92,17 +108,17 @@
                 <div class="page-grid text-gen-layout">
                     <!-- Config Panel -->
                     <div class="config-panel">
-                        <h3 class="panel-title">Configurations</h3>
+                        <h3 class="panel-title" data-i18n="label_configurations">Configurations</h3>
                         <div class="config-group">
-                            <label class="config-label">MODEL SELECTOR</label>
+                            <label class="config-label" data-i18n="label_model_selector">MODEL SELECTOR</label>
                             <select id="chat-model" class="nexus-select" data-category="text+multimodal">
                                 <option value="qwen-plus">Qwen Plus</option>
                             </select>
                             <span class="config-hint" id="chat-model-hint" style="display:none;color:#fbbf24;"></span>
                         </div>
                         <div class="config-group">
-                            <label class="config-label">SYSTEM PROMPT</label>
-                            <textarea id="system-prompt" class="nexus-textarea" rows="3" placeholder="You are a helpful assistant..."></textarea>
+                            <label class="config-label" data-i18n="label_system_prompt">SYSTEM PROMPT</label>
+                            <textarea id="system-prompt" class="nexus-textarea" rows="3" placeholder="You are a helpful assistant..." data-i18n-placeholder="ph_system_prompt"></textarea>
                         </div>
                         <div class="config-group">
                             <label class="config-label">TEMPERATURE <span class="config-value" id="temp-value">0.7</span></label>
@@ -117,14 +133,14 @@
 
                         <!-- Image Attachment for Multimodal -->
                         <div class="config-group">
-                            <label class="config-label">IMAGE ATTACHMENT</label>
-                            <input type="text" id="chat-image-url" class="nexus-input" placeholder="Paste image URL for multimodal...">
+                            <label class="config-label" data-i18n="label_image_attachment">IMAGE ATTACHMENT</label>
+                            <input type="text" id="chat-image-url" class="nexus-input" placeholder="Paste image URL for multimodal..." data-i18n-placeholder="ph_image_url_chat">
                             <span class="config-hint">Qwen3 Omni Flash can analyze images</span>
                         </div>
 
                         <div class="config-divider"></div>
 
-                        <h3 class="panel-title" style="font-size: 0.7rem;">QUICK PROMPTS</h3>
+                        <h3 class="panel-title" style="font-size: 0.7rem;" data-i18n="label_quick_prompts">QUICK PROMPTS</h3>
                         <div class="quick-prompts">
                             <button class="qp-btn" onclick="setPrompt('Explain this code:\n```\n// paste code here\n```')">Code Explainer</button>
                             <button class="qp-btn" onclick="setPrompt('Debug this error and suggest a fix:\n')">Debug Helper</button>
@@ -139,7 +155,7 @@
                         <div class="chat-toolbar">
                             <button class="chat-toolbar-btn" type="button" onclick="startNewChat()" title="Clear chat history">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
-                                <span>New Chat</span>
+                                <span data-i18n="btn_new_chat">New Chat</span>
                             </button>
                             <span class="chat-toolbar-info" id="chat-history-info"></span>
                         </div>
@@ -153,12 +169,12 @@
                         <div id="chat-attachments" class="attachment-strip"></div>
                         <div class="chat-input-area">
                             <input type="file" id="chat-file-input" multiple style="display:none" onchange="handleChatFileSelect(event)">
-                            <button class="attach-btn" type="button" title="Attach file (image, PDF, DOCX, CSV, ZIP, TXT)" onclick="document.getElementById('chat-file-input').click()">
+                            <button class="attach-btn" type="button" data-i18n-title="btn_attach" title="Attach file (image, PDF, DOCX, CSV, ZIP, TXT)" onclick="document.getElementById('chat-file-input').click()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                             </button>
-                            <textarea id="chat-input" class="chat-input" rows="1" placeholder="Send a message (Ctrl + Enter to generate...)" onkeydown="handleChatKeydown(event)"></textarea>
+                            <textarea id="chat-input" class="chat-input" rows="1" placeholder="Send a message (Ctrl + Enter to generate...)" data-i18n-placeholder="ph_chat_input" onkeydown="handleChatKeydown(event)"></textarea>
                             <button id="send-btn" class="generate-btn" onclick="sendChat()">
-                                <span>Generate</span>
+                                <span data-i18n="btn_generate">Generate</span>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                             </button>
                         </div>
@@ -176,7 +192,7 @@
                             <span class="stat-value" id="stat-tokens">--</span>
                         </div>
                         <div class="config-divider"></div>
-                        <h3 class="panel-title">RECENT LOGS</h3>
+                        <h3 class="panel-title" data-i18n="panel_recent_logs">RECENT LOGS</h3>
                         <div class="logs-area" id="logs-area">
                             <div class="log-entry">System ready</div>
                         </div>
@@ -189,8 +205,8 @@
                 <div class="page-grid image-studio-layout">
                     <!-- Prompt Panel -->
                     <div class="image-prompt-panel">
-                        <h3 class="panel-title">IMAGE GENERATION</h3>
-                        <textarea id="img-prompt" class="nexus-textarea" rows="4" placeholder="Describe the masterpiece you want to create..."></textarea>
+                        <h3 class="panel-title" data-i18n="label_image_prompt">IMAGE GENERATION</h3>
+                        <textarea id="img-prompt" class="nexus-textarea" rows="4" placeholder="Describe the masterpiece you want to create..." data-i18n-placeholder="ph_image_prompt"></textarea>
                         <div class="image-actions">
                             <button class="action-tag" onclick="enhancePrompt()">Enhance Prompt</button>
                         </div>
@@ -217,14 +233,14 @@
                             </select>
                         </div>
                         <button onclick="generateImage()" id="img-btn" class="generate-btn full-width">
-                            <span>Generate Image</span>
+                            <span data-i18n="btn_generate_image">Generate Image</span>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                         </button>
 
                         <div class="config-divider"></div>
 
                         <!-- Visual Understanding -->
-                        <h3 class="panel-title">VISUAL UNDERSTANDING</h3>
+                        <h3 class="panel-title" data-i18n="btn_analyze_image">VISUAL UNDERSTANDING</h3>
                         <p class="panel-desc">Analyze images with vision models</p>
                         <div class="config-group">
                             <label class="config-label">VISION MODEL</label>
@@ -234,7 +250,7 @@
                         </div>
                         <div class="config-group">
                             <label class="config-label">IMAGE URL</label>
-                            <input type="text" id="vision-url" class="nexus-input" placeholder="Paste image URL to analyze...">
+                            <input type="text" id="vision-url" class="nexus-input" placeholder="Paste image URL to analyze..." data-i18n-placeholder="ph_image_url_chat">
                         </div>
                         <div class="config-group">
                             <label class="config-label">QUESTION</label>
@@ -242,7 +258,7 @@
                         </div>
                         <button onclick="analyzeImage()" id="vision-btn" class="generate-btn full-width secondary">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                            <span>Analyze Image</span>
+                            <span data-i18n="btn_analyze_image">Analyze Image</span>
                         </button>
                         <div id="vision-result" class="hidden">
                             <div class="result-header">
@@ -256,7 +272,7 @@
                     <!-- Gallery -->
                     <div class="gallery-panel">
                         <div class="gallery-header">
-                            <h3 class="panel-title">Generated Gallery</h3>
+                            <h3 class="panel-title" data-i18n="panel_generated_gallery">Generated Gallery</h3>
                             <span class="gallery-count" id="gallery-count">0 images</span>
                         </div>
                         <div class="gallery-grid" id="gallery-grid">
@@ -275,7 +291,7 @@
                 <div class="page-grid video-engine-layout">
                     <!-- Video Generation Main -->
                     <div class="video-main">
-                        <h3 class="panel-title">Video Generation</h3>
+                        <h3 class="panel-title" data-i18n="label_video_prompt">Video Generation</h3>
                         <p class="panel-desc">Generate videos with Wan 2.7 models</p>
                         <div class="content-form">
                             <div class="config-group">
@@ -287,11 +303,11 @@
                             </div>
                             <div class="config-group">
                                 <label class="config-label">PROMPT</label>
-                                <textarea id="video-prompt" class="nexus-textarea" rows="3" placeholder="Describe the video you want to generate..."></textarea>
+                                <textarea id="video-prompt" class="nexus-textarea" rows="3" placeholder="Describe the video you want to generate..." data-i18n-placeholder="ph_video_prompt"></textarea>
                             </div>
                             <div id="video-image-group" class="config-group hidden">
                                 <label class="config-label">FIRST FRAME IMAGE URL</label>
-                                <input type="text" id="video-image-url" class="nexus-input" placeholder="Image URL for first frame (I2V mode)...">
+                                <input type="text" id="video-image-url" class="nexus-input" placeholder="Image URL for first frame (I2V mode)..." data-i18n-placeholder="ph_first_frame">
                             </div>
                             <div class="form-row">
                                 <div class="config-group">
@@ -318,7 +334,7 @@
                                 </div>
                             </div>
                             <button onclick="generateVideo()" id="video-btn" class="generate-btn full-width">
-                                <span>Generate Video</span>
+                                <span data-i18n="btn_generate_video">Generate Video</span>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                             </button>
                         </div>
@@ -330,8 +346,8 @@
                         </div>
                         <div id="video-result" class="hidden">
                             <div class="result-header">
-                                <span class="panel-title">Generated Video</span>
-                                <button id="video-download-btn" class="copy-btn" onclick="downloadVideo()" style="display:none">Download</button>
+                                <span class="panel-title" data-i18n="panel_generated_video">Generated Video</span>
+                                <button id="video-download-btn" class="copy-btn" data-i18n="btn_download" onclick="downloadVideo()" style="display:none">Download</button>
                             </div>
                             <video id="video-player" controls class="video-player"></video>
                         </div>
@@ -379,7 +395,7 @@
                                 <textarea id="content-topic" class="nexus-textarea" rows="3" placeholder="What should the content be about?"></textarea>
                             </div>
                             <button onclick="generateContent()" id="content-btn" class="generate-btn full-width">
-                                <span>Generate Content</span>
+                                <span data-i18n="btn_generate_content">Generate Content</span>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                             </button>
                         </div>
@@ -465,16 +481,16 @@
                             </div>
                             <div class="config-group">
                                 <label class="config-label">TEXT</label>
-                                <textarea id="tts-text" class="nexus-textarea" rows="4" placeholder="Enter text to convert to speech..."></textarea>
+                                <textarea id="tts-text" class="nexus-textarea" rows="4" placeholder="Enter text to convert to speech..." data-i18n-placeholder="ph_tts_text"></textarea>
                             </div>
                             <button onclick="generateTTS()" id="tts-btn" class="generate-btn full-width">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
-                                <span>Generate Speech</span>
+                                <span data-i18n="btn_generate_speech">Generate Speech</span>
                             </button>
                         </div>
                         <div id="tts-result" class="hidden">
                             <audio id="tts-audio" controls class="audio-player"></audio>
-                            <button id="tts-download-btn" class="copy-btn" onclick="downloadTTS()" style="margin-top:8px">Download Audio</button>
+                            <button id="tts-download-btn" class="copy-btn" data-i18n="btn_download_audio" onclick="downloadTTS()" style="margin-top:8px">Download Audio</button>
                         </div>
 
                         <div class="config-divider"></div>
@@ -496,7 +512,7 @@
                             </div>
                             <button onclick="transcribeAudio()" id="asr-btn" class="generate-btn full-width secondary">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/></svg>
-                                <span>Transcribe Audio</span>
+                                <span data-i18n="btn_transcribe">Transcribe Audio</span>
                             </button>
                         </div>
                         <div id="asr-status" class="hidden">
@@ -633,6 +649,7 @@
         </div>
     </div>
 
+    <script src="/static/js/i18n.js"></script>
     <script src="/static/js/providers.js"></script>
     <script src="/static/js/attachments.js"></script>
     <script src="/static/js/app.js"></script>

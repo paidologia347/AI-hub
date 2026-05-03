@@ -966,8 +966,13 @@ function updateChatHistoryInfo() {
     const info = document.getElementById('chat-history-info');
     if (!info) return;
     const count = loadChatHistory().length;
-    info.textContent = count > 0 ? `${count} message${count > 1 ? 's' : ''} saved` : '';
+    if (count === 0) { info.textContent = ''; return; }
+    const label = (typeof window.t === 'function')
+        ? window.t(count > 1 ? 'msg_chat_count_many' : 'msg_chat_count_one')
+        : (count > 1 ? 'messages saved' : 'message saved');
+    info.textContent = `${count} ${label}`;
 }
+window.updateChatHistoryInfo = updateChatHistoryInfo;
 
 function restoreChatHistory() {
     const messages = loadChatHistory();
@@ -1000,7 +1005,10 @@ function restoreChatHistory() {
 }
 
 window.startNewChat = function () {
-    if (!confirm('Clear chat history? This cannot be undone.')) return;
+    const msg = (typeof window.t === 'function')
+        ? window.t('confirm_clear_history')
+        : 'Clear chat history? This cannot be undone.';
+    if (!confirm(msg)) return;
     try { localStorage.removeItem(CHAT_HISTORY_KEY); } catch {}
     const container = document.getElementById('chat-messages');
     if (container) {
