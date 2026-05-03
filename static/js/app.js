@@ -39,6 +39,27 @@ function renderMarkdown(text) {
     }
 }
 
+// Read an error detail from a Response without throwing on empty/non-JSON
+// bodies. Always returns a string suitable for display.
+async function readErrorDetail(response) {
+    let text = '';
+    try {
+        text = await response.text();
+    } catch {
+        return `HTTP ${response.status}`;
+    }
+    if (!text) return `HTTP ${response.status}`;
+    try {
+        const data = JSON.parse(text);
+        if (data && typeof data === 'object') {
+            return data.detail || data.message || data.error || text;
+        }
+    } catch {
+        // not JSON, fall through
+    }
+    return text;
+}
+
 function processSSELines(buffer, chunk, callback) {
     buffer += chunk;
     const parts = buffer.split('\n');
@@ -190,8 +211,8 @@ async function sendChat() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            bubble.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            const detail = await readErrorDetail(response);
+            bubble.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(detail)}</span>`;
             return;
         }
 
@@ -283,26 +304,32 @@ window.refreshAllModelDropdowns = function () {
 };
 
 // ===== TTS =====
-function updateTTSVoices() {
-    const provider = document.getElementById('tts-provider').value;
-    const voiceSelect = document.getElementById('tts-voice');
-    const voices = {
-        'qwen3-tts-flash': [
-            { value: 'Cherry', label: 'Cherry (EN Female)' },
-            { value: 'Serena', label: 'Serena (EN Female)' },
-            { value: 'Ethan', label: 'Ethan (EN Male)' },
-            { value: 'Chelsie', label: 'Chelsie (EN Female)' },
-        ],
-        'cosyvoice-v3-flash': [
-            { value: 'longxiaochun', label: 'Xiaochun (ZH Female)' },
-            { value: 'longxiaoxia', label: 'Xiaoxia (ZH Female)' },
-            { value: 'longyue', label: 'Yue (ZH Female)' },
-            { value: 'longlaotie', label: 'Laotie (ZH Male)' },
-        ],
-    };
+// All Qwen3-TTS-Flash voices speak Chinese, English, French, German, Russian,
+// Italian, Spanish, Portuguese, Japanese and Korean. Use the LANGUAGE selector
+// (or Auto) to control pronunciation/intonation.
+const QWEN3_TTS_VOICES = [
+    { value: 'Cherry',    label: 'Cherry (Female, warm)' },
+    { value: 'Serena',    label: 'Serena (Female, gentle)' },
+    { value: 'Chelsie',   label: 'Chelsie (Female, soft)' },
+    { value: 'Momo',      label: 'Momo (Female, lively)' },
+    { value: 'Vivian',    label: 'Vivian (Female, mature)' },
+    { value: 'Bella',     label: 'Bella (Female, sweet)' },
+    { value: 'Jennifer',  label: 'Jennifer (Female, elegant)' },
+    { value: 'Katerina',  label: 'Katerina (Female, intense)' },
+    { value: 'Maia',      label: 'Maia (Female, youthful)' },
+    { value: 'Moon',      label: 'Moon (Female, bright)' },
+    { value: 'Ethan',     label: 'Ethan (Male, sunny)' },
+    { value: 'Ryan',      label: 'Ryan (Male, smooth)' },
+    { value: 'Kai',       label: 'Kai (Male, deep)' },
+    { value: 'Aiden',     label: 'Aiden (Male, magnetic)' },
+    { value: 'Nofish',    label: 'Nofish (Male, casual)' },
+];
 
+function updateTTSVoices() {
+    const voiceSelect = document.getElementById('tts-voice');
+    if (!voiceSelect) return;
     voiceSelect.innerHTML = '';
-    for (const v of voices[provider] || []) {
+    for (const v of QWEN3_TTS_VOICES) {
         const opt = document.createElement('option');
         opt.value = v.value;
         opt.textContent = v.label;
@@ -316,11 +343,13 @@ async function generateTTS() {
 
     const provider = document.getElementById('tts-provider').value;
     const voice = document.getElementById('tts-voice').value;
+    const langEl = document.getElementById('tts-language');
+    const language = langEl ? langEl.value : 'Auto';
     const btn = document.getElementById('tts-btn');
 
     btn.disabled = true;
     btn.innerHTML = '<span>Generating...</span>';
-    addLog(`TTS request: ${provider}`);
+    addLog(`TTS request: ${provider} (${language})`);
 
     try {
         const dsKey = (typeof window.getProviderPayload === 'function')
@@ -328,12 +357,12 @@ async function generateTTS() {
         const response = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, provider, voice, api_key: dsKey }),
+            body: JSON.stringify({ text, provider, voice, language, api_key: dsKey }),
         });
 
         if (!response.ok) {
-            const err = await response.text();
-            alert('TTS Error: ' + err);
+            const detail = await readErrorDetail(response);
+            alert('TTS Error: ' + detail);
             return;
         }
 
@@ -346,7 +375,7 @@ async function generateTTS() {
         audio.play();
         addLog('TTS audio generated');
     } catch (err) {
-        alert('Error: ' + err.message);
+        alert('Error: ' + (err && err.message ? err.message : String(err)));
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg><span>Generate Speech</span>';
@@ -383,8 +412,8 @@ async function generateContent() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            const detail = await readErrorDetail(response);
+            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(detail)}</span>`;
             return;
         }
 
@@ -444,8 +473,8 @@ async function generateImage() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            alert('Error: ' + (err.detail || 'Unknown error'));
+            const detail = await readErrorDetail(response);
+            alert('Error: ' + detail);
             return;
         }
 
@@ -529,8 +558,8 @@ async function analyzeImage() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            const detail = await readErrorDetail(response);
+            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(detail)}</span>`;
             return;
         }
 
@@ -618,8 +647,8 @@ async function generateVideo() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            statusText.textContent = 'Error: ' + (err.detail || 'Unknown error');
+            const detail = await readErrorDetail(response);
+            statusText.textContent = 'Error: ' + detail;
             statusDiv.querySelector('.task-spinner').style.display = 'none';
             return;
         }
@@ -717,8 +746,8 @@ async function transcribeAudio() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            statusText.textContent = 'Error: ' + (err.detail || 'Unknown error');
+            const detail = await readErrorDetail(response);
+            statusText.textContent = 'Error: ' + detail;
             statusDiv.querySelector('.task-spinner').style.display = 'none';
             return;
         }
@@ -838,8 +867,8 @@ async function generateMarketing() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.detail || 'Unknown error')}</span>`;
+            const detail = await readErrorDetail(response);
+            outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(detail)}</span>`;
             return;
         }
 

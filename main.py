@@ -233,7 +233,8 @@ AVAILABLE_MODELS = {
         _m("wan2.7-i2v", "Wan 2.7 Image-to-Video", "Video", "dashscope"),
     ],
     "tts": [
-        _m("cosyvoice-v3-flash", "CosyVoice v3 Flash", "TTS", "dashscope"),
+        # NOTE: CosyVoice models are WebSocket-only on DashScope and are not
+        # currently exposed by this app. Stick to qwen3-tts-* (REST).
         _m("qwen3-tts-flash", "Qwen3 TTS Flash", "TTS", "dashscope"),
     ],
     "asr": [
@@ -302,6 +303,7 @@ class TTSRequest(BaseModel):
     text: str
     provider: str = "qwen3-tts-flash"
     voice: str = "Cherry"
+    language: str = "Auto"  # Auto / English / Chinese / Japanese / Korean / etc.
     api_key: str = ""  # DashScope-only; overrides env var
 
 
@@ -800,6 +802,18 @@ async def text_to_speech(req: TTSRequest):
     if not http_client:
         raise HTTPException(status_code=500, detail="HTTP client not initialized")
 
+    # CosyVoice family is WebSocket-only on DashScope (no REST endpoint).
+    # The HTTP `/multimodal-generation/generation` endpoint only supports
+    # qwen3-tts-* models.
+    if req.provider and req.provider.lower().startswith("cosyvoice"):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "CosyVoice models require WebSocket and are not yet supported "
+                "by this app. Please use 'qwen3-tts-flash' instead."
+            ),
+        )
+
     url = f"{DASHSCOPE_NATIVE_URL}/services/aigc/multimodal-generation/generation"
 
     payload = {
@@ -807,13 +821,20 @@ async def text_to_speech(req: TTSRequest):
         "input": {
             "text": req.text,
             "voice": req.voice,
+            "language_type": req.language or "Auto",
         },
     }
 
     try:
         resp = await http_client.post(url, json=payload, headers=native_headers(api_key=req.api_key))
         if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+            # Try to bubble up a clean message instead of dumping raw provider HTML.
+            try:
+                err_json = resp.json()
+                detail = err_json.get("message") or err_json.get("detail") or resp.text
+            except Exception:
+                detail = resp.text or f"DashScope returned HTTP {resp.status_code}"
+            raise HTTPException(status_code=resp.status_code, detail=detail)
 
         result = resp.json()
         output = result.get("output", {})
@@ -831,6 +852,8 @@ async def text_to_speech(req: TTSRequest):
             )
 
         raise HTTPException(status_code=500, detail="No audio generated")
+    except HTTPException:
+        raise
     except httpx.HTTPError as e:
         raise HTTPException(status_code=500, detail=str(e))
 

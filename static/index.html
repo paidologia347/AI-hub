@@ -463,19 +463,29 @@
                         <div class="content-form">
                             <div class="form-row">
                                 <div class="config-group">
-                                    <label class="config-label">PROVIDER</label>
+                                    <label class="config-label">MODEL</label>
                                     <select id="tts-provider" class="nexus-select" onchange="updateTTSVoices()">
                                         <option value="qwen3-tts-flash">Qwen3 TTS Flash</option>
-                                        <option value="cosyvoice-v3-flash">CosyVoice v3 Flash</option>
                                     </select>
                                 </div>
                                 <div class="config-group">
                                     <label class="config-label">VOICE</label>
-                                    <select id="tts-voice" class="nexus-select">
-                                        <option value="Cherry">Cherry (EN Female)</option>
-                                        <option value="Serena">Serena (EN Female)</option>
-                                        <option value="Ethan">Ethan (EN Male)</option>
-                                        <option value="Chelsie">Chelsie (EN Female)</option>
+                                    <select id="tts-voice" class="nexus-select"></select>
+                                </div>
+                                <div class="config-group">
+                                    <label class="config-label" data-i18n="label_tts_language">LANGUAGE</label>
+                                    <select id="tts-language" class="nexus-select">
+                                        <option value="Auto">Auto (Detect)</option>
+                                        <option value="English">English</option>
+                                        <option value="Chinese">Chinese</option>
+                                        <option value="Japanese">Japanese</option>
+                                        <option value="Korean">Korean</option>
+                                        <option value="French">French</option>
+                                        <option value="German">German</option>
+                                        <option value="Italian">Italian</option>
+                                        <option value="Portuguese">Portuguese</option>
+                                        <option value="Russian">Russian</option>
+                                        <option value="Spanish">Spanish</option>
                                     </select>
                                 </div>
                             </div>
