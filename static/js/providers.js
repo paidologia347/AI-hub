@@ -157,7 +157,8 @@ function renderProviderCards() {
                        value="${escapeAttr(getCustomBaseUrl())}">
             </div>` : '';
 
-        const helpLink = p.key_url ? `<a href="${escapeAttr(p.key_url)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);">Get key →</a>` : '';
+        const helpLink = p.key_url ? `<a href="${escapeAttr(p.key_url)}" target="_blank" rel="noopener" class="provider-help-link">Get key →</a>` : '';
+        const t = (k, fb) => (window.t ? window.t(k, fb) : fb);
 
         card.innerHTML = `
             <div class="provider-card-header">
@@ -169,14 +170,16 @@ function renderProviderCards() {
             <div class="provider-key-row">
                 <input type="password" class="provider-key-input" data-role="key"
                        placeholder="${escapeAttr(p.key_prefix ? p.key_prefix + '...' : 'API key')}"
-                       value="${escapeAttr(localKey)}">
-                <button class="provider-icon-btn" data-action="toggle" title="Show/hide key">👁</button>
-                <button class="provider-icon-btn" data-action="copy" title="Copy key">📋</button>
+                       value="${escapeAttr(localKey)}"
+                       autocomplete="off" spellcheck="false">
+                <button class="provider-icon-btn" data-action="toggle" title="${escapeAttr(t('btn_show', 'Show / hide'))}">👁</button>
+                <button class="provider-icon-btn" data-action="paste" title="${escapeAttr(t('btn_paste', 'Paste from clipboard'))}">📌</button>
+                <button class="provider-icon-btn" data-action="copy" title="${escapeAttr(t('btn_copy', 'Copy'))}">📋</button>
             </div>
             <div class="provider-actions">
-                <button class="provider-btn primary" data-action="save">Save</button>
-                <button class="provider-btn" data-action="test">Test</button>
-                <button class="provider-btn danger" data-action="clear">Clear</button>
+                <button class="provider-btn primary" data-action="save">${escapeHtml(t('btn_save', 'Save'))}</button>
+                <button class="provider-btn" data-action="test">${escapeHtml(t('btn_test', 'Test'))}</button>
+                <button class="provider-btn danger" data-action="clear">${escapeHtml(t('btn_clear', 'Clear'))}</button>
             </div>
             <div class="provider-test-result" data-role="result" style="display:none;"></div>
             ${helpLink ? `<div>${helpLink}</div>` : ''}
@@ -203,6 +206,24 @@ function handleProviderCardClick(e) {
         if (!keyInput.value) { showToast('No key to copy'); return; }
         navigator.clipboard.writeText(keyInput.value);
         showToast('Key copied');
+    } else if (action === 'paste') {
+        // Read from clipboard, populate the input, and immediately persist it.
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+            showToast('Clipboard read not supported. Press Ctrl+V into the input.');
+            return;
+        }
+        navigator.clipboard.readText().then(text => {
+            const v = (text || '').trim();
+            if (!v) { showToast('Clipboard is empty'); return; }
+            keyInput.value = v;
+            setKey(providerId, v);
+            if (baseUrlInput) setCustomBaseUrl(baseUrlInput.value.trim());
+            showToast('Pasted & saved');
+            renderProviderCards();
+            if (typeof refreshAllModelDropdowns === 'function') refreshAllModelDropdowns();
+        }).catch(() => {
+            showToast('Clipboard permission denied. Press Ctrl+V into the input.');
+        });
     } else if (action === 'save') {
         setKey(providerId, keyInput.value.trim());
         if (baseUrlInput) setCustomBaseUrl(baseUrlInput.value.trim());

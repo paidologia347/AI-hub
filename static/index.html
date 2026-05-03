@@ -582,30 +582,40 @@
                 <div class="api-page">
                     <div class="api-header">
                         <div>
-                            <h2 class="api-title">API Management</h2>
-                            <p class="api-desc">Configure API keys for multiple AI providers. Keys are stored locally in your browser (localStorage).</p>
+                            <h2 class="api-title" data-i18n="settings_title">Settings Dashboard</h2>
+                            <p class="api-desc" data-i18n="settings_desc">Paste your API keys for each provider below. Keys are stored only in your browser (localStorage) and never sent anywhere except the provider you're calling.</p>
                         </div>
+                    </div>
+
+                    <!-- Quick start banner -->
+                    <div class="settings-banner">
+                        <strong data-i18n="settings_banner_title">How to add an API key:</strong>
+                        <ol style="margin:8px 0 0 18px;padding:0;line-height:1.7;">
+                            <li data-i18n="settings_banner_step1">Click "Get key →" on the provider you want, sign in, and copy the key from their console.</li>
+                            <li data-i18n="settings_banner_step2">Paste it into the input box on the matching card (or click 📋 Paste).</li>
+                            <li data-i18n="settings_banner_step3">Click the Save button. Optionally click Test to verify the key works.</li>
+                        </ol>
                     </div>
 
                     <!-- Stats Cards -->
                     <div class="stats-grid">
                         <div class="api-stat-card">
-                            <span class="api-stat-label">TOTAL MODELS</span>
+                            <span class="api-stat-label" data-i18n="stat_total_models">TOTAL MODELS</span>
                             <span class="api-stat-value" id="stat-total-models">--</span>
-                            <span class="api-stat-sub">All Categories</span>
+                            <span class="api-stat-sub" data-i18n="stat_total_models_sub">All Categories</span>
                         </div>
                         <div class="api-stat-card">
-                            <span class="api-stat-label">CAPABILITIES</span>
+                            <span class="api-stat-label" data-i18n="stat_capabilities">CAPABILITIES</span>
                             <span class="api-stat-value">7</span>
-                            <span class="api-stat-sub">Text, Vision, Image, Video, TTS, ASR, Multimodal</span>
+                            <span class="api-stat-sub" data-i18n="stat_capabilities_sub">Text, Vision, Image, Video, TTS, ASR, Multimodal</span>
                         </div>
                         <div class="api-stat-card">
-                            <span class="api-stat-label">PROVIDERS</span>
+                            <span class="api-stat-label" data-i18n="stat_providers">PROVIDERS</span>
                             <span class="api-stat-value" id="stat-providers">--</span>
-                            <span class="api-stat-sub">Configured Keys</span>
+                            <span class="api-stat-sub" data-i18n="stat_providers_sub">Configured Keys</span>
                         </div>
                         <div class="api-stat-card">
-                            <span class="api-stat-label">AVG LATENCY</span>
+                            <span class="api-stat-label" data-i18n="stat_avg_latency">AVG LATENCY</span>
                             <span class="api-stat-value" id="avg-latency">--</span>
                             <span class="api-stat-sub">ms</span>
                         </div>
@@ -613,17 +623,17 @@
 
                     <!-- Provider Cards -->
                     <div class="api-section">
-                        <h3 class="panel-title">API Providers</h3>
-                        <p class="config-hint" style="margin-bottom:16px;">Each provider exposes an OpenAI-compatible endpoint. Set a key to enable models from that provider in the dropdowns.</p>
+                        <h3 class="panel-title" data-i18n="settings_providers_title">API Providers</h3>
+                        <p class="config-hint" data-i18n="settings_providers_hint" style="margin-bottom:16px;">Each provider exposes an OpenAI-compatible endpoint. Set a key to enable models from that provider in the dropdowns.</p>
                         <div id="provider-cards" class="provider-grid">
                             <!-- Provider cards populated by JS -->
-                            <div style="opacity:0.5;padding:20px;">Loading providers...</div>
+                            <div style="opacity:0.5;padding:20px;" data-i18n="settings_loading">Loading providers...</div>
                         </div>
                     </div>
 
                     <!-- Available Models -->
                     <div class="api-section">
-                        <h3 class="panel-title">Available Models</h3>
+                        <h3 class="panel-title" data-i18n="settings_models_title">Available Models</h3>
                         <div class="models-table">
                             <div class="model-row header">
                                 <span>Model</span>
