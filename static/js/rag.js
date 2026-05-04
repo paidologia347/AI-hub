@@ -202,17 +202,23 @@
         if (!attachment || attachment.kind !== 'text' || !attachment.content) {
             throw new Error('Only text attachments can be indexed');
         }
-        // De-duplicate by filename: replace previous entry to keep things tidy.
-        const existing = STORE.docs.findIndex(d => d.filename === attachment.filename);
-        if (existing >= 0) STORE.docs.splice(existing, 1);
 
         const chunks = chunkText(attachment.content);
         if (chunks.length === 0) throw new Error('No extractable text in this file');
 
+        // Embed first; only mutate the store after the network call succeeds
+        // so a transient embedding failure can't wipe the previous version of
+        // a file that's already in the KB.
         const vectors = await embedAll(chunks);
         if (vectors.length !== chunks.length) {
             throw new Error(`Embedding count mismatch (${vectors.length} vs ${chunks.length})`);
         }
+
+        // De-duplicate by filename now that we have a fresh successful index.
+        // Re-find here because STORE.docs may have shifted during the await
+        // (e.g. another removeDoc() call from the user).
+        const existing = STORE.docs.findIndex(d => d.filename === attachment.filename);
+        if (existing >= 0) STORE.docs.splice(existing, 1);
 
         const doc = {
             id: genId(),
