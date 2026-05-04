@@ -98,6 +98,32 @@ const I18N_DICT = {
         msg_chat_count_one: 'pesan tersimpan',
         msg_chat_count_many: 'pesan tersimpan',
 
+        // Conversation history sidebar
+        chs_new_chat: 'Chat baru',
+        chs_toggle: 'Buka/tutup riwayat',
+        chs_search_placeholder: 'Cari percakapan...',
+        chs_empty: 'Belum ada percakapan',
+        chs_pin: 'Tandai',
+        chs_unpin: 'Lepas tanda',
+        chs_rename: 'Ganti judul',
+        chs_delete: 'Hapus',
+        chs_rename_prompt: 'Judul baru:',
+        chs_delete_confirm: 'Hapus percakapan ini?',
+
+        // System prompt presets
+        preset_none: '— Tanpa preset —',
+        preset_save_current: 'Simpan prompt saat ini sebagai preset',
+        preset_manage: 'Kelola preset',
+        preset_modal_title: 'Preset Prompt Sistem',
+        preset_name_label: 'NAMA PRESET',
+        preset_name_ph: 'mis. Peringkas',
+        preset_prompt_label: 'TEKS PROMPT',
+        preset_prompt_ph: 'Anda adalah...',
+        preset_save_prompt: 'Nama preset:',
+        preset_name_required: 'Nama preset wajib diisi',
+        preset_empty_prompt: 'Prompt sistem masih kosong',
+        preset_delete_confirm: 'Hapus preset ini?',
+
         // Settings dashboard
         settings_title: 'Pengaturan Dashboard',
         settings_desc: 'Tempel API key untuk tiap penyedia. Kunci hanya disimpan di browser Anda (localStorage) dan tidak pernah disimpan di server.',
@@ -199,6 +225,32 @@ const I18N_DICT = {
         msg_chat_count_one: 'message saved',
         msg_chat_count_many: 'messages saved',
 
+        // Conversation history sidebar
+        chs_new_chat: 'New chat',
+        chs_toggle: 'Toggle history',
+        chs_search_placeholder: 'Search conversations...',
+        chs_empty: 'No conversations yet',
+        chs_pin: 'Pin',
+        chs_unpin: 'Unpin',
+        chs_rename: 'Rename',
+        chs_delete: 'Delete',
+        chs_rename_prompt: 'New title:',
+        chs_delete_confirm: 'Delete this conversation?',
+
+        // System prompt presets
+        preset_none: '— No preset —',
+        preset_save_current: 'Save current as preset',
+        preset_manage: 'Manage presets',
+        preset_modal_title: 'System Prompt Presets',
+        preset_name_label: 'PRESET NAME',
+        preset_name_ph: 'e.g. Summarizer',
+        preset_prompt_label: 'PROMPT TEXT',
+        preset_prompt_ph: 'You are...',
+        preset_save_prompt: 'Preset name:',
+        preset_name_required: 'Name is required',
+        preset_empty_prompt: 'System prompt is empty',
+        preset_delete_confirm: 'Delete this preset?',
+
         // Settings dashboard
         settings_title: 'Settings Dashboard',
         settings_desc: 'Paste your API keys for each provider below. Keys are stored only in your browser (localStorage) and never sent anywhere except the provider you\u2019re calling.',
@@ -250,12 +302,16 @@ function applyTranslations() {
     if (typeof window.updateChatHistoryInfo === 'function') {
         window.updateChatHistoryInfo();
     }
+    document.dispatchEvent(new CustomEvent('aihub:lang-change', { detail: { lang } }));
 }
 
 window.t = function (key) {
     const dict = I18N_DICT[getLang()] || I18N_DICT.id;
     return dict[key] !== undefined ? dict[key] : key;
 };
+
+// Expose current language to other modules (e.g. preset name localization).
+window.__getLang = getLang;
 
 function updateLangButton() {
     const btn = document.getElementById('lang-toggle-btn');

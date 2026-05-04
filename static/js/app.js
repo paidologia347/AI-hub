@@ -950,71 +950,24 @@ window.downloadTTS = function () {
     window.downloadUrl(audio.src, `aihub-tts-${Date.now()}.mp3`);
 };
 
-// ===== Chat History (localStorage) =====
-// Persists Text Generation messages so a page reload keeps the conversation.
-// Stored as { v: 1, messages: [{ role, html }] } under a single key.
-const CHAT_HISTORY_KEY = 'aihub.chatHistory.text';
-const CHAT_HISTORY_LIMIT = 50;
-const CHAT_HISTORY_MAX_BYTES = 500 * 1024;
+// ===== Chat History (multi-conversation, see history.js) =====
+// The chat page renders the *active* conversation from AIHubHistory. Other
+// pages keep their existing storage; this is text-generation specific.
 
-function loadChatHistory() {
-    try {
-        const raw = localStorage.getItem(CHAT_HISTORY_KEY);
-        if (!raw) return [];
-        const data = JSON.parse(raw);
-        return Array.isArray(data.messages) ? data.messages : [];
-    } catch { return []; }
-}
-
-function saveChatHistory(messages) {
-    try {
-        const trimmed = messages.slice(-CHAT_HISTORY_LIMIT);
-        const payload = JSON.stringify({ v: 1, messages: trimmed });
-        if (payload.length > CHAT_HISTORY_MAX_BYTES) {
-            // Drop oldest until size fits.
-            while (trimmed.length > 1 && JSON.stringify({ v: 1, messages: trimmed }).length > CHAT_HISTORY_MAX_BYTES) {
-                trimmed.shift();
-            }
-            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify({ v: 1, messages: trimmed }));
-        } else {
-            localStorage.setItem(CHAT_HISTORY_KEY, payload);
-        }
-    } catch (err) {
-        console.warn('Chat history save failed', err);
-    }
-}
-
-function appendToChatHistory(role, html) {
-    const messages = loadChatHistory();
-    messages.push({ role, html, ts: Date.now() });
-    saveChatHistory(messages);
-    updateChatHistoryInfo();
-}
-
-function updateChatHistoryInfo() {
-    const info = document.getElementById('chat-history-info');
-    if (!info) return;
-    const count = loadChatHistory().length;
-    if (count === 0) { info.textContent = ''; return; }
-    const label = (typeof window.t === 'function')
-        ? window.t(count > 1 ? 'msg_chat_count_many' : 'msg_chat_count_one')
-        : (count > 1 ? 'messages saved' : 'message saved');
-    info.textContent = `${count} ${label}`;
-}
-window.updateChatHistoryInfo = updateChatHistoryInfo;
-
-function restoreChatHistory() {
-    const messages = loadChatHistory();
-    if (messages.length === 0) {
-        updateChatHistoryInfo();
+function renderActiveConversationInto(container) {
+    if (!window.AIHubHistory) return;
+    const conv = window.AIHubHistory.activeConversation();
+    container.innerHTML = '';
+    if (!conv || conv.messages.length === 0) {
+        container.innerHTML = `
+            <div class="chat-placeholder">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                <p>${window.t ? window.t('chat_placeholder_p') : 'Send a message to start generating'}</p>
+                <span>${window.t ? window.t('chat_placeholder_span') : 'Select a model and configure parameters'}</span>
+            </div>`;
         return;
     }
-    const container = document.getElementById('chat-messages');
-    if (!container) return;
-    const placeholder = container.querySelector('.chat-placeholder');
-    if (placeholder) placeholder.remove();
-
-    for (const m of messages) {
+    for (const m of conv.messages) {
         const div = document.createElement('div');
         div.className = `message ${m.role}`;
         const avatarText = m.role === 'user' ? 'U' : 'AI';
@@ -1030,35 +983,48 @@ function restoreChatHistory() {
         }
     }
     container.scrollTop = container.scrollHeight;
-    updateChatHistoryInfo();
 }
 
-window.startNewChat = function () {
-    const msg = (typeof window.t === 'function')
-        ? window.t('confirm_clear_history')
-        : 'Clear chat history? This cannot be undone.';
-    if (!confirm(msg)) return;
-    try { localStorage.removeItem(CHAT_HISTORY_KEY); } catch {}
+function restoreActiveConversation() {
     const container = document.getElementById('chat-messages');
-    if (container) {
-        container.innerHTML = `
-            <div class="chat-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                <p>Send a message to start generating</p>
-                <span>Select a model and configure parameters</span>
-            </div>`;
-    }
+    if (!container) return;
+    renderActiveConversationInto(container);
     updateChatHistoryInfo();
-    addLog('Chat history cleared');
+}
+window.restoreActiveConversation = restoreActiveConversation;
+
+function updateChatHistoryInfo() {
+    const info = document.getElementById('chat-history-info');
+    if (!info || !window.AIHubHistory) return;
+    const conv = window.AIHubHistory.activeConversation();
+    const count = conv ? conv.messages.length : 0;
+    if (count === 0) { info.textContent = ''; return; }
+    const label = (typeof window.t === 'function')
+        ? window.t(count > 1 ? 'msg_chat_count_many' : 'msg_chat_count_one')
+        : (count > 1 ? 'messages saved' : 'message saved');
+    info.textContent = `${count} ${label}`;
+}
+window.updateChatHistoryInfo = updateChatHistoryInfo;
+
+// Start a fresh conversation in the sidebar (does not delete previous chats).
+window.startNewChat = function () {
+    if (!window.AIHubHistory) return;
+    window.AIHubHistory.createConversation();
+    restoreActiveConversation();
+    if (typeof window.refreshHistorySidebar === 'function') window.refreshHistorySidebar();
+    addLog('Started new chat');
 };
 
-// Expose for sendChat() to call.
+// Append a message to the *active* conversation and refresh sidebar/info.
 window.recordChatMessage = function (role, html) {
-    appendToChatHistory(role, html);
+    if (!window.AIHubHistory) return;
+    window.AIHubHistory.appendMessageToActive(role, html);
+    updateChatHistoryInfo();
+    if (typeof window.refreshHistorySidebar === 'function') window.refreshHistorySidebar();
 };
 
 // ===== Initialize =====
 updateTTSVoices();
 updateMarketingTemplate();
-restoreChatHistory();
+restoreActiveConversation();
 addLog('AI Hub v3.0 initialized');
