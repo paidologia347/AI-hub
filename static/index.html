@@ -196,6 +196,10 @@
                             <button class="attach-btn" type="button" data-i18n-title="btn_attach" title="Attach file (image, PDF, DOCX, CSV, ZIP, TXT)" onclick="document.getElementById('chat-file-input').click()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                             </button>
+                            <button class="attach-btn kb-btn" type="button" data-i18n-title="rag_kb_open" title="Knowledge Base (indexed files)" onclick="window.__kbOpen()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2zM22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                                <span id="kb-badge" class="kb-badge" style="display:none">0</span>
+                            </button>
                             <textarea id="chat-input" class="chat-input" rows="1" placeholder="Send a message (Ctrl + Enter to generate...)" data-i18n-placeholder="ph_chat_input" onkeydown="handleChatKeydown(event)"></textarea>
                             <button id="send-btn" class="generate-btn" onclick="sendChat()">
                                 <span data-i18n="btn_generate">Generate</span>
@@ -717,12 +721,34 @@
         </div>
     </div>
 
+    <!-- Knowledge Base Modal (RAG) -->
+    <div id="kb-modal" class="preset-modal" style="display:none;" onclick="if(event.target===this)window.__kbClose()">
+        <div class="preset-modal-card kb-modal-card">
+            <div class="preset-modal-head">
+                <h3 data-i18n="rag_kb_title">Knowledge Base</h3>
+                <button type="button" class="preset-modal-close" onclick="window.__kbClose()" aria-label="Close">×</button>
+            </div>
+            <div class="preset-modal-body kb-modal-body">
+                <p class="kb-help" data-i18n="rag_kb_help">Indexed files are searched on every message. Their relevant excerpts are added to the system prompt as context.</p>
+                <div id="kb-summary" class="kb-summary"></div>
+                <div id="kb-list" class="kb-list"></div>
+                <div class="preset-modal-actions kb-actions">
+                    <button type="button" class="generate-btn kb-clear-btn" onclick="window.__kbClear()">
+                        <span data-i18n="rag_clear">Clear all</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/i18n.js"></script>
     <script src="/static/js/providers.js"></script>
     <script src="/static/js/attachments.js"></script>
     <script src="/static/js/history.js"></script>
+    <script src="/static/js/rag.js"></script>
     <script src="/static/js/app.js"></script>
     <script src="/static/js/history-ui.js"></script>
+    <script src="/static/js/rag-ui.js"></script>
     <script>
       // Bootstrap providers + models, then refresh dropdowns. Runs after the
       // other scripts so window.populateModelSelect is available.

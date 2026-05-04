@@ -324,6 +324,21 @@ class ProviderTestRequest(BaseModel):
     base_url: str = ""
 
 
+class EmbeddingsRequest(BaseModel):
+    """Compute embeddings for a batch of input strings.
+
+    Defaults to DashScope ``text-embedding-v3`` (OpenAI-compatible). Other
+    providers may set their own embedding model (e.g. ``text-embedding-3-small``
+    for OpenAI). Used by the RAG client to index attached files and to embed
+    user queries.
+    """
+    inputs: List[str]
+    model: str = "text-embedding-v3"
+    provider: str = "dashscope"
+    api_key: str = ""
+    base_url: str = ""
+
+
 # ===== Helper: URL validation (SSRF protection) =====
 
 _BLOCKED_NETWORKS = [
@@ -540,6 +555,43 @@ async def test_provider(req: ProviderTestRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/embeddings")
+async def embeddings(req: EmbeddingsRequest):
+    """Return embedding vectors for a list of input strings.
+
+    Wraps the provider's OpenAI-compatible embeddings endpoint. The frontend
+    RAG layer batches calls (typically up to 25 inputs per request) so the
+    server side stays a thin pass-through.
+    """
+    if not req.inputs:
+        raise HTTPException(status_code=400, detail="inputs[] is empty")
+    # Conservative caps to avoid abuse; the RAG client batches well below this.
+    if len(req.inputs) > 64:
+        raise HTTPException(status_code=400, detail="Max 64 inputs per request")
+    too_long = next((i for i, s in enumerate(req.inputs) if len(s) > 8000), -1)
+    if too_long >= 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"inputs[{too_long}] exceeds 8000 chars; chunk before sending",
+        )
+
+    c = get_client_for(req.provider, req.api_key, req.base_url)
+    try:
+        resp = await c.embeddings.create(model=req.model, input=req.inputs)
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Surface provider error string so the UI can show actionable feedback.
+        raise HTTPException(status_code=502, detail=f"Embedding provider error: {e}")
+
+    vectors = [d.embedding for d in resp.data]
+    return {
+        "model": resp.model,
+        "vectors": vectors,
+        "dim": len(vectors[0]) if vectors else 0,
+    }
 
 
 @app.post("/api/chat")

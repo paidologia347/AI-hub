@@ -138,8 +138,25 @@ async function sendChat() {
     input.value = '';
 
     const model = document.getElementById('chat-model').value;
-    const systemPrompt = document.getElementById('system-prompt').value;
+    let systemPrompt = document.getElementById('system-prompt').value;
     const temperature = parseFloat(document.getElementById('chat-temp').value);
+
+    // RAG: if any indexed files exist, retrieve top-K matching chunks and
+    // prepend them to the system prompt as additional context. Failures are
+    // non-fatal — we just continue without retrieved context.
+    if (window.AIHubRAG && window.AIHubRAG.stats().chunks > 0 && userMessage) {
+        try {
+            const { contextText, hits } = await window.AIHubRAG.retrieveContext(userMessage);
+            if (contextText) {
+                systemPrompt = (systemPrompt ? systemPrompt + '\n\n' : '') + contextText;
+                addLog(`RAG: ${hits.length} chunk${hits.length > 1 ? 's' : ''} from ${
+                    new Set(hits.map(h => h.filename)).size
+                } file(s) retrieved`);
+            }
+        } catch (err) {
+            addLog(`RAG retrieve failed: ${err.message}`);
+        }
+    }
 
     // Combine the user's typed message with any extracted file text. If an
     // image was attached, route to /api/vision (or /api/multimodal for omni).

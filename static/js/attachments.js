@@ -59,10 +59,26 @@ function renderAttachments(page) {
         const a = list[i];
         const chip = document.createElement('span');
         chip.className = `attachment-chip kind-${a.kind || 'text'}` + (a.uploading ? ' uploading' : '');
-        const icon = a.kind === 'image' ? '🖼' : a.uploading ? '⏳' : '📄';
+        if (a.indexing) chip.classList.add('uploading');
+        const icon = a.kind === 'image' ? '🖼'
+            : a.uploading ? '⏳'
+            : a.indexing ? '⏳'
+            : '📄';
+        // Index button only on chat page, only for text attachments that
+        // aren't currently uploading/indexing. RAG itself is exposed via
+        // window.AIHubRAG (loaded on Text Generation page only).
+        const showIndexBtn = page === 'chat'
+            && a.kind === 'text'
+            && !a.uploading
+            && !a.indexing
+            && typeof window.AIHubRAG !== 'undefined';
+        const indexBtn = showIndexBtn
+            ? `<button class="chip-index" type="button" data-idx="${i}" data-page="${page}" title="${escapeAttrLocal(window.t ? window.t('rag_index_title') : 'Index for retrieval (RAG)')}">📚</button>`
+            : '';
         chip.innerHTML = `
             <span>${icon}</span>
             <span class="chip-name" title="${escapeAttrLocal(a.filename)}">${escapeHtmlLocal(a.filename)}</span>
+            ${indexBtn}
             <button class="chip-remove" type="button" data-idx="${i}" data-page="${page}">×</button>
         `;
         el.appendChild(chip);
@@ -74,6 +90,38 @@ function renderAttachments(page) {
             renderAttachments(page);
         };
     });
+    el.querySelectorAll('.chip-index').forEach(btn => {
+        btn.onclick = () => {
+            const idx = parseInt(btn.dataset.idx, 10);
+            indexOne(page, idx);
+        };
+    });
+}
+
+async function indexOne(page, idx) {
+    const list = window.attachments[page];
+    const att = list[idx];
+    if (!att || att.kind !== 'text' || att.indexing) return;
+    if (!window.AIHubRAG) {
+        showToast('RAG not available on this page');
+        return;
+    }
+    att.indexing = true;
+    renderAttachments(page);
+    try {
+        const doc = await window.AIHubRAG.indexAttachment(att);
+        // Remove the chip once indexed; the doc lives in the KB modal now.
+        const realIdx = list.indexOf(att);
+        if (realIdx >= 0) list.splice(realIdx, 1);
+        renderAttachments(page);
+        if (typeof window.refreshKBPanel === 'function') window.refreshKBPanel();
+        addLog(`Indexed ${doc.filename} (${doc.chunks.length} chunks)`);
+        showToast(`Indexed ${doc.filename}`);
+    } catch (err) {
+        att.indexing = false;
+        renderAttachments(page);
+        showToast(`Index failed: ${err.message}`);
+    }
 }
 
 // Builds the prompt + image_url for a chat request, given the current message.
