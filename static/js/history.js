@@ -106,10 +106,14 @@ function saveConvStore(store) {
             convs = pinned.concat(rest).slice(0, CONV_LIMIT);
         }
         let payload = JSON.stringify({ v: 2, conversations: convs, activeId: store.activeId });
-        // Drop oldest non-pinned messages-wise until we fit the byte budget.
+        // Drop oldest non-pinned conversations until we fit the byte budget.
+        // The array is ordered newest-first (see CONV_LIMIT sort + unshift in
+        // createConversation), so search from the tail to find the oldest.
         while (payload.length > CONV_BUDGET_BYTES && convs.length > 1) {
-            // Trim oldest non-pinned conversation entirely.
-            const idx = convs.findIndex(c => !c.pinned);
+            let idx = -1;
+            for (let i = convs.length - 1; i >= 0; i--) {
+                if (!convs[i].pinned) { idx = i; break; }
+            }
             if (idx < 0) break;
             convs.splice(idx, 1);
             payload = JSON.stringify({ v: 2, conversations: convs, activeId: store.activeId });
