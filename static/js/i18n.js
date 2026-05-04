@@ -124,6 +124,20 @@ const I18N_DICT = {
         preset_empty_prompt: 'Prompt sistem masih kosong',
         preset_delete_confirm: 'Hapus preset ini?',
 
+        // RAG / Knowledge Base
+        rag_index_title: 'Indeks untuk pencarian (RAG)',
+        rag_kb_open: 'Pustaka pengetahuan (file terindeks)',
+        rag_kb_title: 'Pustaka Pengetahuan',
+        rag_kb_help: 'File yang diindeks akan dicari pada setiap pesan. Bagian relevannya ditambahkan ke prompt sistem sebagai konteks.',
+        rag_empty: 'Belum ada file terindeks',
+        rag_empty_long: 'Belum ada file terindeks. Unggah PDF/DOCX/TXT lalu klik 📚 pada chip untuk mengindeksnya.',
+        rag_doc_one: 'dokumen',
+        rag_doc_many: 'dokumen',
+        rag_chunks: 'potongan',
+        rag_remove: 'Hapus',
+        rag_clear: 'Hapus semua',
+        rag_clear_confirm: 'Hapus seluruh pustaka pengetahuan?',
+
         // Settings dashboard
         settings_title: 'Pengaturan Dashboard',
         settings_desc: 'Tempel API key untuk tiap penyedia. Kunci hanya disimpan di browser Anda (localStorage) dan tidak pernah disimpan di server.',
@@ -250,6 +264,20 @@ const I18N_DICT = {
         preset_name_required: 'Name is required',
         preset_empty_prompt: 'System prompt is empty',
         preset_delete_confirm: 'Delete this preset?',
+
+        // RAG / Knowledge Base
+        rag_index_title: 'Index for retrieval (RAG)',
+        rag_kb_open: 'Knowledge Base (indexed files)',
+        rag_kb_title: 'Knowledge Base',
+        rag_kb_help: 'Indexed files are searched on every message. Their relevant excerpts are added to the system prompt as context.',
+        rag_empty: 'No indexed files yet',
+        rag_empty_long: 'No indexed files yet. Upload a PDF/DOCX/TXT and click 📚 on the chip to index it for retrieval.',
+        rag_doc_one: 'document',
+        rag_doc_many: 'documents',
+        rag_chunks: 'chunks',
+        rag_remove: 'Remove',
+        rag_clear: 'Clear all',
+        rag_clear_confirm: 'Clear the entire knowledge base?',
 
         // Settings dashboard
         settings_title: 'Settings Dashboard',
