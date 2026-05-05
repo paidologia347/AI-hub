@@ -55,13 +55,16 @@
         if (!conv || !conv.messages[messageIndex]) return;
         if (conv.messages[messageIndex].role !== 'user') return;
 
-        // Fork to save the old timeline
-        forkAt(messageIndex - 1 >= 0 ? messageIndex - 1 : 0);
+        // Fork to save the old timeline.
+        // forkAt(messageIndex) keeps messages 0..messageIndex and saves the
+        // rest as a branch at parentIndex=messageIndex. For index 0 this
+        // keeps the original message[0] and branches from it, which is
+        // consistent with the data model (getBranchInfo queries by parentIndex).
+        forkAt(messageIndex);
 
-        // Now messages[messageIndex] doesn't exist (we truncated). 
-        // Add the edited message back.
+        // Replace the message at the fork point with the edited text
         const html = window.escapeHtml ? window.escapeHtml(newText) : newText;
-        conv.messages.push({ role: 'user', html, ts: Date.now() });
+        conv.messages[messageIndex] = { role: 'user', html, ts: Date.now() };
         if (window.AIHubHistory) window.AIHubHistory.saveAll();
         refreshUI();
 

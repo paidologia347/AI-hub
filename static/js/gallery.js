@@ -72,8 +72,8 @@
         const img = getById(id);
         if (!img) return;
         // Fill the prompt input and trigger generate
-        const promptInput = document.getElementById('image-prompt');
-        const modelSelect = document.getElementById('image-model');
+        const promptInput = document.getElementById('img-prompt');
+        const modelSelect = document.getElementById('img-model');
         if (promptInput) promptInput.value = img.prompt;
         if (modelSelect) {
             const opt = [...modelSelect.options].find(o => o.value === img.model);
@@ -85,7 +85,7 @@
     function createVariation(id) {
         const img = getById(id);
         if (!img) return;
-        const promptInput = document.getElementById('image-prompt');
+        const promptInput = document.getElementById('img-prompt');
         if (promptInput) {
             promptInput.value = `Create a variation of: ${img.prompt}. Make it slightly different in style or composition.`;
         }
@@ -145,8 +145,7 @@
             grid.appendChild(item);
         }
 
-        // Event delegation
-        grid.addEventListener('click', handleGalleryClick);
+
     }
 
     function handleGalleryClick(e) {
@@ -187,8 +186,10 @@
         return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    // Initialize
+    // Initialize: render gallery and attach click delegation once
     document.addEventListener('DOMContentLoaded', () => {
+        const grid = document.getElementById('gallery-grid');
+        if (grid) grid.addEventListener('click', handleGalleryClick);
         renderGallery();
     });
 

@@ -135,7 +135,7 @@
             if (!response.ok) {
                 const detail = typeof window.readErrorDetail === 'function'
                     ? await window.readErrorDetail(response) : `HTTP ${response.status}`;
-                body.innerHTML = `<span style="color:#ef4444">${detail}</span>`;
+                body.innerHTML = `<span style="color:#ef4444">${window.escapeHtml ? window.escapeHtml(detail) : detail}</span>`;
                 return;
             }
 
@@ -165,7 +165,7 @@
             }
         } catch (err) {
             if (err.name !== 'AbortError') {
-                body.innerHTML = `<span style="color:#ef4444">${err.message}</span>`;
+                body.innerHTML = `<span style="color:#ef4444">${window.escapeHtml ? window.escapeHtml(err.message) : err.message}</span>`;
             }
         }
     }
