@@ -1973,3 +1973,349 @@ pre.has-copy-btn:hover .code-copy-btn { opacity: 1; }
     overflow-x: auto;
     overflow-y: hidden;
 }
+
+/* ===== Session Cost Panel ===== */
+.cost-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+.cost-action-btn {
+    flex: 1;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+    transition: background .15s;
+}
+.cost-action-btn:hover {
+    background: rgba(0,212,255,0.12);
+    color: var(--accent);
+}
+
+/* ===== Multi-Model Compare ===== */
+.compare-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+.compare-panel.hidden { display: none; }
+.compare-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.compare-header h4 {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+.compare-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+}
+.compare-model-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.compare-model-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.compare-model-label:hover {
+    border-color: var(--accent);
+}
+.compare-model-label.no-key {
+    opacity: 0.4;
+}
+.compare-model-label small {
+    color: var(--text-tertiary, #666);
+    font-size: 9px;
+}
+.compare-model-check {
+    accent-color: var(--accent);
+}
+.compare-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.compare-input-row .nexus-textarea {
+    flex: 1;
+    min-height: 36px;
+}
+.compare-input-row .generate-btn {
+    white-space: nowrap;
+}
+.compare-grid {
+    display: grid;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.compare-col {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.compare-col-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(0,212,255,0.06);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+}
+.compare-model-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.compare-col-stats {
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+.compare-col-body {
+    padding: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* ===== Mic Button ===== */
+.mic-btn {
+    position: relative;
+    transition: color .2s, background .2s;
+}
+.mic-btn.recording {
+    color: #ef4444;
+    background: rgba(239,68,68,0.15);
+    animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+
+/* ===== Speaker Button on Messages ===== */
+.msg-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    padding-left: 36px;
+}
+.msg-speak-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    padding: 3px 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity .2s, color .2s;
+}
+.msg-speak-btn:hover {
+    opacity: 1;
+    color: var(--accent);
+}
+
+/* ===== Branch Controls ===== */
+.branch-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding-left: 36px;
+    margin-top: 2px;
+    opacity: 0;
+    transition: opacity .2s;
+}
+.message:hover .branch-controls {
+    opacity: 1;
+}
+.branch-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    padding: 2px 5px;
+    color: var(--text-tertiary, #666);
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+}
+.branch-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+.branch-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 4px;
+    font-size: 10px;
+    color: var(--text-tertiary, #666);
+}
+.branch-nav-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0 3px;
+    font-size: 12px;
+}
+.branch-nav-btn:hover {
+    color: var(--accent);
+}
+.branch-nav-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+.branch-edit-textarea {
+    width: 100%;
+    min-height: 40px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 8px;
+    resize: vertical;
+}
+.branch-edit-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+.branch-edit-save, .branch-edit-cancel {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    border: none;
+}
+.branch-edit-save {
+    background: var(--accent);
+    color: #000;
+}
+.branch-edit-cancel {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-secondary);
+}
+
+/* ===== KB Enhanced UI ===== */
+.kb-toggle-row {
+    margin-bottom: 10px;
+}
+.kb-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.kb-toggle-label input[type="checkbox"] {
+    accent-color: var(--accent);
+}
+.kb-add-section {
+    margin-bottom: 10px;
+}
+.kb-add-section h4 {
+    margin: 0 0 6px 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+.kb-url-row {
+    display: flex;
+    gap: 6px;
+}
+.kb-url-row .nexus-input {
+    flex: 1;
+}
+.kb-add-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* ===== Gallery Enhanced ===== */
+.gallery-meta {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 6px 8px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+}
+.gallery-meta-prompt {
+    font-size: 11px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gallery-meta-info {
+    font-size: 9px;
+    color: rgba(255,255,255,0.6);
+}
+.gallery-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    padding: 4px;
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    opacity: 0;
+    transition: opacity .2s;
+}
+.gallery-item:hover .gallery-actions {
+    opacity: 1;
+}
+.gallery-action-delete {
+    color: #ef4444 !important;
+}
+.gallery-action-delete:hover {
+    background: rgba(239,68,68,0.2) !important;
+}
+
+/* Light theme overrides for new components */
+[data-theme="light"] .compare-col-header {
+    background: rgba(0,150,200,0.06);
+}
+[data-theme="light"] .branch-edit-textarea {
+    background: rgba(0,0,0,0.05);
+    color: var(--text-primary);
+}
+[data-theme="light"] .mic-btn.recording {
+    background: rgba(239,68,68,0.1);
+}
+[data-theme="light"] .cost-action-btn:hover {
+    background: rgba(0,150,200,0.1);
+}
+[data-theme="light"] .gallery-meta {
+    background: linear-gradient(transparent, rgba(0,0,0,0.6));
+}

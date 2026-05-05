@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import json
 import asyncio
 import base64
@@ -1197,6 +1198,215 @@ async def upload_file(file: UploadFile = File(...)):
         "size": len(data),
         "content": text,
     }
+
+
+class ScrapeRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/scrape")
+async def scrape_url(req: ScrapeRequest):
+    """Fetch a URL and extract text content for RAG indexing.
+
+    Uses SSRF-safe fetching (same _validate_and_fetch_audio flow but for HTML).
+    Returns ``{title, text}``.
+    """
+    parsed = urlparse(req.url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL")
+
+    try:
+        addr = ipaddress.ip_address(hostname)
+    except ValueError:
+        try:
+            loop = asyncio.get_running_loop()
+            resolved = await loop.getaddrinfo(
+                hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM,
+            )
+            addr = ipaddress.ip_address(resolved[0][4][0])
+        except (socket.gaierror, IndexError):
+            raise HTTPException(status_code=400, detail="Cannot resolve hostname")
+
+    for network in _BLOCKED_NETWORKS:
+        if addr in network:
+            raise HTTPException(status_code=400, detail="URL points to a blocked address range")
+
+    backend = _PinnedDNSBackend(str(addr))
+    pool = httpcore.AsyncConnectionPool(network_backend=backend)
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        target = (parsed.path or "/").encode()
+        if parsed.query:
+            target += b"?" + parsed.query.encode()
+        response = await pool.request(
+            method=b"GET",
+            url=httpcore.URL(
+                scheme=parsed.scheme.encode(),
+                host=hostname.encode(),
+                port=port,
+                target=target,
+            ),
+            headers=[
+                (b"host", hostname.encode()),
+                (b"user-agent", b"AI-Hub/3.0"),
+                (b"accept", b"text/html,application/xhtml+xml,text/plain"),
+            ],
+        )
+        if response.status != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to fetch URL (HTTP {response.status})")
+        max_size = 5 * 1024 * 1024  # 5 MB
+        if len(response.content) > max_size:
+            raise HTTPException(status_code=400, detail="Page too large (max 5 MB)")
+
+        html = response.content.decode("utf-8", errors="replace")
+    finally:
+        await pool.aclose()
+
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    title = title_match.group(1).strip() if title_match else hostname
+
+    # Strip HTML tags for a rough text extraction
+    text = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if len(text) > 100_000:
+        text = text[:100_000]
+
+    return {"title": title, "text": text}
+
+
+@app.post("/api/asr/upload")
+async def asr_upload(
+    audio_file: UploadFile = File(...),
+    model: str = Form("fun-asr"),
+    api_key: str = Form(""),
+):
+    """Accept an uploaded audio file, send it to DashScope ASR, and return
+    the transcript directly (synchronous flow for short recordings).
+
+    This endpoint handles the mic-recording → transcription flow from the
+    Voice Input feature. For short audio (<30s) it uses the direct
+    recognition API rather than the async task-based one.
+    """
+    data = await audio_file.read()
+    max_size = 25 * 1024 * 1024  # 25 MB
+    if len(data) > max_size:
+        raise HTTPException(status_code=413, detail="Audio file too large (max 25 MB)")
+
+    audio_b64 = base64.b64encode(data).decode("ascii")
+
+    key = _resolve_dashscope_key(api_key)
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "X-DashScope-Async": "enable",
+    }
+
+    payload = {
+        "model": model,
+        "input": {
+            "file_urls": [],
+        },
+        "parameters": {
+            "language_hints": ["en", "zh", "id"],
+        },
+    }
+
+    # For uploaded audio, use the base64 content directly via the
+    # recognition endpoint that accepts inline data.
+    # DashScope Fun-ASR expects a file URL, so we use a data URI approach
+    # or fall back to the async upload method.
+    # Use the simpler paraformer-v2 realtime endpoint for short audio:
+    recognize_url = f"{DASHSCOPE_NATIVE_URL}/services/audio/asr/recognition"
+    recognize_headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    recognize_payload = {
+        "model": "paraformer-v2",
+        "input": {
+            "audio": {
+                "data": audio_b64,
+                "format": audio_file.content_type or "audio/webm",
+            }
+        },
+        "parameters": {
+            "language_hints": ["en", "zh", "id"],
+        },
+    }
+
+    try:
+        resp = await http_client.post(
+            recognize_url, json=recognize_payload, headers=recognize_headers, timeout=30.0,
+        )
+        if resp.status_code == 200:
+            result = resp.json()
+            output = result.get("output", {})
+            transcript = output.get("text", "")
+            if not transcript:
+                sentences = output.get("sentences", [])
+                transcript = " ".join(s.get("text", "") for s in sentences)
+            return {"transcript": transcript.strip(), "model": "paraformer-v2"}
+
+        # Fallback: use the async Fun-ASR task-based flow if paraformer fails
+        async_headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "X-DashScope-Async": "enable",
+        }
+        async_payload = {
+            "model": model,
+            "input": {
+                "file_urls": [f"data:audio/webm;base64,{audio_b64}"],
+            },
+            "parameters": {
+                "language_hints": ["en", "zh", "id"],
+            },
+        }
+
+        task_url = f"{DASHSCOPE_NATIVE_URL}/services/audio/asr/transcription"
+        task_resp = await http_client.post(
+            task_url, json=async_payload, headers=async_headers, timeout=30.0,
+        )
+        if task_resp.status_code != 200:
+            raise HTTPException(status_code=task_resp.status_code, detail=task_resp.text)
+
+        task_data = task_resp.json()
+        task_id = task_data.get("output", {}).get("task_id")
+        if not task_id:
+            raise HTTPException(status_code=500, detail="No task_id returned from ASR")
+
+        # Poll for result
+        result = await poll_task(task_id, max_wait=60, api_key=api_key)
+        output = result.get("output", {})
+        results = output.get("results", [])
+        transcript = ""
+        for r in results:
+            tc = r.get("transcription_url", "") or r.get("text", "")
+            if tc and not tc.startswith("http"):
+                transcript += tc + " "
+            elif tc.startswith("http"):
+                # Fetch the transcription file
+                try:
+                    tr_resp = await http_client.get(tc, timeout=10.0)
+                    if tr_resp.status_code == 200:
+                        tr_data = tr_resp.json()
+                        for item in tr_data.get("transcripts", []):
+                            transcript += item.get("text", "") + " "
+                except Exception:
+                    pass
+
+        return {"transcript": transcript.strip(), "model": model, "task_id": task_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ASR error: {e}")
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
