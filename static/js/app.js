@@ -342,6 +342,14 @@ async function sendChat() {
         if (typeof window.recordChatMessage === 'function' && fullText) {
             window.recordChatMessage('assistant', bubble.innerHTML);
         }
+        // Track cost
+        if (window.AIHubCost && fullText) {
+            window.AIHubCost.recordMessage(model, built.prompt, fullText);
+        }
+        // Add speaker button for TTS playback
+        if (window.AIHubVoice && msgDiv) {
+            window.AIHubVoice.addSpeakerButton(msgDiv);
+        }
     } catch (err) {
         if (err && err.name === 'AbortError') {
             // Stop button cancelled the fetch before any data arrived.
@@ -619,6 +627,16 @@ async function generateImage() {
         imageCount++;
         document.getElementById('gallery-count').textContent = `${imageCount} image${imageCount > 1 ? 's' : ''}`;
         addLog('Image generated');
+
+        // Save to gallery history
+        if (window.AIHubGallery && imgSrc) {
+            window.AIHubGallery.addImage({
+                url: imgSrc,
+                prompt,
+                model,
+                revisedPrompt: data.revised_prompt || '',
+            });
+        }
     } catch (err) {
         alert('Error: ' + err.message);
     } finally {
@@ -1077,9 +1095,11 @@ function renderActiveConversationInto(container) {
             </div>`;
         return;
     }
-    for (const m of conv.messages) {
+    for (let i = 0; i < conv.messages.length; i++) {
+        const m = conv.messages[i];
         const div = document.createElement('div');
         div.className = `message ${m.role}`;
+        div.dataset.msgIndex = i;
         const avatarText = m.role === 'user' ? 'U' : 'AI';
         div.innerHTML = `
             <div class="msg-avatar">${avatarText}</div>
@@ -1093,7 +1113,11 @@ function renderActiveConversationInto(container) {
             } else if (window.hljs) {
                 bubble.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
             }
+            // Add speaker button on restored assistant messages
+            if (window.AIHubVoice) window.AIHubVoice.addSpeakerButton(div);
         }
+        // Add branch controls (edit/fork) on all messages
+        if (window.AIHubBranch) window.AIHubBranch.addBranchControls(div, i);
     }
     userScrolledUp = false;
     container.scrollTop = container.scrollHeight;

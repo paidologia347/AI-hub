@@ -267,14 +267,117 @@
         return { contextText, hits };
     }
 
+    // ----- URL scraping --------------------------------------------------------
+
+    async function indexFromURL(url) {
+        if (!url || typeof url !== 'string') throw new Error('Invalid URL');
+        const resp = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        const text = data.text || '';
+        if (!text.trim()) throw new Error('No text extracted from URL');
+
+        const filename = data.title || new URL(url).hostname;
+        return indexAttachment({ filename, kind: 'text', content: text });
+    }
+
+    // ----- Paste plain text ---------------------------------------------------
+
+    async function indexPastedText(name, text) {
+        if (!text || !text.trim()) throw new Error('Empty text');
+        const filename = name || `Pasted text (${new Date().toLocaleString()})`;
+        return indexAttachment({ filename, kind: 'text', content: text });
+    }
+
+    // ----- Per-conversation KB toggle ----------------------------------------
+
+    const KB_TOGGLE_KEY = 'aihub.rag.toggle.v1';
+
+    function loadToggles() {
+        try {
+            const raw = localStorage.getItem(KB_TOGGLE_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch { return {}; }
+    }
+    function saveToggles(t) {
+        try { localStorage.setItem(KB_TOGGLE_KEY, JSON.stringify(t)); } catch {}
+    }
+
+    function isKBEnabled(conversationId) {
+        if (!conversationId) return true;
+        const toggles = loadToggles();
+        return toggles[conversationId] !== false;
+    }
+
+    function setKBEnabled(conversationId, enabled) {
+        if (!conversationId) return;
+        const toggles = loadToggles();
+        toggles[conversationId] = enabled;
+        saveToggles(toggles);
+    }
+
+    // ----- Selective file retrieval -------------------------------------------
+    // enabledDocIds: array of doc IDs to include (null = all)
+
+    async function retrieveContextSelective(query, topK, enabledDocIds) {
+        const k = topK || DEFAULT_TOP_K;
+        const q = String(query || '').trim();
+        if (q.length < MIN_QUERY_CHARS) return { contextText: '', hits: [] };
+        if (STORE.docs.length === 0) return { contextText: '', hits: [] };
+
+        const docsToSearch = enabledDocIds
+            ? STORE.docs.filter(d => enabledDocIds.includes(d.id))
+            : STORE.docs;
+        if (docsToSearch.length === 0) return { contextText: '', hits: [] };
+
+        const [queryVec] = await embedAll([q]);
+        if (!queryVec) return { contextText: '', hits: [] };
+
+        const scored = [];
+        for (const doc of docsToSearch) {
+            for (let i = 0; i < doc.chunks.length; i++) {
+                const ch = doc.chunks[i];
+                const score = cosine(queryVec, ch.vec);
+                scored.push({ score, filename: doc.filename, chunkIndex: i, text: ch.text });
+            }
+        }
+        scored.sort((a, b) => b.score - a.score);
+        const hits = scored.slice(0, k);
+
+        if (hits.length === 0) return { contextText: '', hits: [] };
+
+        const blocks = hits.map((h, i) =>
+            `[Source ${i + 1}: ${h.filename}, chunk ${h.chunkIndex + 1}]\n${h.text}`
+        );
+        const contextText =
+            'You have access to the following retrieved excerpts from the user\'s files. ' +
+            'Use them to answer when relevant; cite the source filename when you do. ' +
+            'If the excerpts do not contain the answer, say so and answer from general knowledge.\n\n' +
+            blocks.join('\n\n---\n\n');
+
+        return { contextText, hits };
+    }
+
     window.AIHubRAG = {
         list,
         has,
         getByFilename,
         indexAttachment,
+        indexFromURL,
+        indexPastedText,
         removeDoc,
         clearAll,
         retrieveContext,
+        retrieveContextSelective,
         stats,
+        isKBEnabled,
+        setKBEnabled,
     };
 })();
