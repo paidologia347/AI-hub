@@ -56,6 +56,10 @@ const I18N_DICT = {
         btn_generate_video: 'Hasilkan Video',
         btn_generate_speech: 'Hasilkan Suara',
         btn_generate_content: 'Hasilkan Konten',
+        btn_stop: 'Hentikan',
+        btn_copy: 'Salin',
+        btn_copied: 'Tersalin!',
+        msg_stopped: '— dihentikan —',
         btn_transcribe: 'Transkripsi',
         btn_analyze_image: 'Analisis Gambar',
         btn_new_chat: 'Chat Baru',
@@ -200,6 +204,10 @@ const I18N_DICT = {
         btn_generate_video: 'Generate Video',
         btn_generate_speech: 'Generate Speech',
         btn_generate_content: 'Generate Content',
+        btn_stop: 'Stop',
+        btn_copy: 'Copy',
+        btn_copied: 'Copied!',
+        msg_stopped: '— stopped —',
         btn_transcribe: 'Transcribe',
         btn_analyze_image: 'Analyze Image',
         btn_new_chat: 'New Chat',
@@ -364,6 +372,7 @@ function setTheme(theme) {
     try { localStorage.setItem(THEME_KEY, theme); } catch {}
     document.documentElement.setAttribute('data-theme', theme);
     updateThemeButton();
+    document.dispatchEvent(new CustomEvent('aihub:theme-change', { detail: { theme } }));
 }
 
 function updateThemeButton() {

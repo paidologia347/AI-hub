@@ -98,6 +98,30 @@ function showToast(message) {
 
 // ===== Chat =====
 let isStreaming = false;
+let currentChatAbort = null;
+let userScrolledUp = false;
+
+function isNearBottom(el, slack) {
+    if (!el) return true;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return distance < (slack || 80);
+}
+
+function stickyScroll(el) {
+    if (!el) return;
+    if (userScrolledUp && !isNearBottom(el, 200)) return;
+    el.scrollTop = el.scrollHeight;
+}
+
+// Track manual scroll-up so streaming doesn't yank the view back to bottom
+// while the user is reading earlier output.
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    container.addEventListener('scroll', () => {
+        userScrolledUp = !isNearBottom(container, 80);
+    }, { passive: true });
+});
 
 function setPrompt(text) {
     document.getElementById('chat-input').value = text;
@@ -110,6 +134,37 @@ function handleChatKeydown(e) {
         sendChat();
     }
 }
+
+// Toggle the send button between Generate and Stop while streaming.
+function setSendButtonStreaming(streaming) {
+    const btn = document.getElementById('send-btn');
+    if (!btn) return;
+    if (streaming) {
+        btn.classList.add('is-stop');
+        btn.disabled = false;
+        btn.onclick = stopChat;
+        btn.innerHTML = `
+            <span data-i18n="btn_stop">${window.t ? window.t('btn_stop') : 'Stop'}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        `;
+    } else {
+        btn.classList.remove('is-stop');
+        btn.disabled = false;
+        btn.onclick = sendChat;
+        btn.innerHTML = `
+            <span data-i18n="btn_generate">${window.t ? window.t('btn_generate') : 'Generate'}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+        `;
+    }
+}
+window.setSendButtonStreaming = setSendButtonStreaming;
+
+function stopChat() {
+    if (!currentChatAbort) return;
+    try { currentChatAbort.abort(); } catch {}
+    addLog('Generation stopped by user');
+}
+window.stopChat = stopChat;
 
 function addMessage(role, content) {
     const container = document.getElementById('chat-messages');
@@ -124,6 +179,7 @@ function addMessage(role, content) {
         <div class="msg-bubble">${role === 'user' ? escapeHtml(content) : content}</div>
     `;
     container.appendChild(div);
+    userScrolledUp = false;
     container.scrollTop = container.scrollHeight;
     return div;
 }
@@ -141,7 +197,8 @@ async function sendChat() {
     // double-click on Generate (or a Ctrl+Enter spam) during the RAG
     // embedding round-trip can't fire a duplicate submission.
     isStreaming = true;
-    document.getElementById('send-btn').disabled = true;
+    currentChatAbort = new AbortController();
+    setSendButtonStreaming(true);
 
     const model = document.getElementById('chat-model').value;
     let systemPrompt = document.getElementById('system-prompt').value;
@@ -229,6 +286,7 @@ async function sendChat() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
+            signal: currentChatAbort ? currentChatAbort.signal : undefined,
         });
 
         if (!response.ok) {
@@ -241,19 +299,41 @@ async function sendChat() {
         const decoder = new TextDecoder();
         let fullText = '';
         let sseBuffer = '';
+        const messagesEl = document.getElementById('chat-messages');
+        let stopped = false;
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
-                fullText += content;
-                bubble.innerHTML = renderMarkdown(fullText);
-            });
-            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+        const onAbort = () => {
+            stopped = true;
+            try { reader.cancel('user-abort'); } catch {}
+        };
+        if (currentChatAbort) currentChatAbort.signal.addEventListener('abort', onAbort);
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                sseBuffer = processSSELines(sseBuffer, chunk, (content) => {
+                    fullText += content;
+                    bubble.innerHTML = renderMarkdown(fullText);
+                    if (window.AIHubRender) window.AIHubRender.enhance(bubble, { interim: true });
+                });
+                stickyScroll(messagesEl);
+            }
+        } catch (readErr) {
+            // Reader cancellation throws when the stream is aborted; that's
+            // expected user-driven flow. Other reader errors fall through.
+            if (!stopped && readErr && readErr.name !== 'AbortError') throw readErr;
+        }
+        if (currentChatAbort) currentChatAbort.signal.removeEventListener('abort', onAbort);
+
+        if (stopped) {
+            bubble.innerHTML = renderMarkdown(fullText)
+                + `<div class="msg-stopped-note">${window.t ? window.t('msg_stopped') : '— stopped —'}</div>`;
         }
 
-        bubble.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        // Final-pass enhancement: KaTeX, Mermaid, copy buttons, refresh hljs.
+        if (window.AIHubRender) window.AIHubRender.enhance(bubble, { interim: false });
 
         const latency = Date.now() - startTime;
         document.getElementById('stat-latency').textContent = `${latency}ms`;
@@ -263,10 +343,16 @@ async function sendChat() {
             window.recordChatMessage('assistant', bubble.innerHTML);
         }
     } catch (err) {
-        bubble.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
+        if (err && err.name === 'AbortError') {
+            // Stop button cancelled the fetch before any data arrived.
+            bubble.innerHTML = `<span class="msg-stopped-note">${window.t ? window.t('msg_stopped') : '— stopped —'}</span>`;
+        } else {
+            bubble.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
+        }
     } finally {
         isStreaming = false;
-        document.getElementById('send-btn').disabled = false;
+        currentChatAbort = null;
+        setSendButtonStreaming(false);
         if (typeof window.clearAttachments === 'function') window.clearAttachments('chat');
     }
 }
@@ -453,7 +539,8 @@ async function generateContent() {
             });
         }
 
-        outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        if (window.AIHubRender) window.AIHubRender.enhance(outputDiv, { interim: false });
+        else outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
         addLog('Content generated');
     } catch (err) {
         outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
@@ -599,7 +686,8 @@ async function analyzeImage() {
             });
         }
 
-        outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        if (window.AIHubRender) window.AIHubRender.enhance(outputDiv, { interim: false });
+        else outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
         addLog('Vision analysis complete');
     } catch (err) {
         outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
@@ -908,7 +996,8 @@ async function generateMarketing() {
             });
         }
 
-        outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        if (window.AIHubRender) window.AIHubRender.enhance(outputDiv, { interim: false });
+        else outputDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
         addLog('Marketing copy generated');
     } catch (err) {
         outputDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
@@ -998,11 +1087,15 @@ function renderActiveConversationInto(container) {
         `;
         container.appendChild(div);
         if (m.role === 'assistant') {
-            div.querySelectorAll('pre code').forEach(block => {
-                if (window.hljs) hljs.highlightElement(block);
-            });
+            const bubble = div.querySelector('.msg-bubble');
+            if (window.AIHubRender) {
+                window.AIHubRender.enhance(bubble, { interim: false });
+            } else if (window.hljs) {
+                bubble.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+            }
         }
     }
+    userScrolledUp = false;
     container.scrollTop = container.scrollHeight;
 }
 
