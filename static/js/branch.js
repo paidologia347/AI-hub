@@ -56,10 +56,22 @@
         if (conv.messages[messageIndex].role !== 'user') return;
 
         // Fork to save the old timeline
-        forkAt(messageIndex - 1 >= 0 ? messageIndex - 1 : 0);
+        ensureBranches(conv);
+        if (messageIndex === 0) {
+            // Special case: editing first message — save entire conversation as branch
+            if (conv.messages.length > 0) {
+                conv.branches.push({
+                    parentIndex: -1,
+                    messages: conv.messages.slice(),
+                    ts: Date.now(),
+                });
+            }
+            conv.messages = [];
+        } else {
+            forkAt(messageIndex - 1);
+        }
 
-        // Now messages[messageIndex] doesn't exist (we truncated). 
-        // Add the edited message back.
+        // Add the edited message
         const html = window.escapeHtml ? window.escapeHtml(newText) : newText;
         conv.messages.push({ role: 'user', html, ts: Date.now() });
         if (window.AIHubHistory) window.AIHubHistory.saveAll();
