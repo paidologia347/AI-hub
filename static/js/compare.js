@@ -165,7 +165,7 @@
             }
         } catch (err) {
             if (err.name !== 'AbortError') {
-                body.innerHTML = `<span style="color:#ef4444">${err.message}</span>`;
+                body.innerHTML = `<span style="color:#ef4444">${window.escapeHtml ? window.escapeHtml(err.message) : err.message}</span>`;
             }
         }
     }
