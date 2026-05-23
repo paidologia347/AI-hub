@@ -17,6 +17,8 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 DASHSCOPE_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 DASHSCOPE_NATIVE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
@@ -76,7 +78,7 @@ app = FastAPI(title="AI Hub", version="2.0.0", lifespan=lifespan)
 @app.middleware("http")
 async def add_no_cache_headers(request, call_next):
     response = await call_next(request)
-    if request.url.path == "/" or request.url.path.startswith("/static/"):
+    if request.url.path == "/" or request.url.path.startswith("/static/") or request.url.path.startswith("/assets/"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -521,9 +523,25 @@ async def upload_file(file: UploadFile = File(...)):
     }
 
 
+if os.path.isdir(FRONTEND_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
 async def root():
+    frontend_index = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(frontend_index):
+        return FileResponse(frontend_index)
+    return FileResponse("static/index.html")
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    if full_path.startswith(("api/", "static/", "assets/")):
+        raise HTTPException(status_code=404, detail="Not found")
+    frontend_index = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(frontend_index):
+        return FileResponse(frontend_index)
     return FileResponse("static/index.html")
