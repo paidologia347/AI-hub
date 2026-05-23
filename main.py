@@ -68,6 +68,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AI Hub", version="2.0.0", lifespan=lifespan)
 
+
+@app.middleware("http")
+async def add_no_cache_headers(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 AVAILABLE_MODELS = {
     "text": [
         {"id": "qwen-plus", "name": "Qwen Plus", "provider": "Alibaba Cloud"},
