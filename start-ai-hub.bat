@@ -10,7 +10,7 @@ if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 cd /d "%APP_DIR%"
 
 echo [AI Hub] Checking Python dependencies...
-python -c "import fastapi, uvicorn, openai, httpx, dotenv" >nul 2>&1
+python -c "import fastapi, uvicorn, openai, httpx, dotenv, multipart, pypdf, docx, openpyxl" >nul 2>&1
 if errorlevel 1 (
     echo [AI Hub] Installing dependencies...
     python -m pip install -e .

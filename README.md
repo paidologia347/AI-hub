@@ -10,6 +10,7 @@ A modern web application that provides AI tools across three studios, powered by
 - Code syntax highlighting
 - Quick prompts for coding tasks (explain, debug, refactor, test writing)
 - Adjustable temperature and system prompts
+- File attachments for chat prompts (text/code, PDF, DOCX, XLSX, ZIP, and images)
 
 ### AI Media Studio
 - **Text-to-Speech**: Qwen3 TTS Flash, CosyVoice v3 Flash with multiple voices
@@ -68,6 +69,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 | `/api/image/generate` | POST | Generate images (Wan models) |
 | `/api/tts` | POST | Text-to-Speech (Qwen TTS / CosyVoice) |
 | `/api/content/generate` | POST | Generate content (streaming SSE) |
+| `/api/upload` | POST | Upload and extract attachment content for chat |
 | `/api/models` | GET | List available models |
 
 ## License

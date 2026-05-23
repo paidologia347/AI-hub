@@ -1,10 +1,14 @@
 import os
 import json
+import base64
+import io
+import zipfile
 from contextlib import asynccontextmanager
+from typing import List
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -358,6 +362,163 @@ async def generate_content(req: ContentRequest):
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+# ===== File Attachment Upload =====
+
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_TEXT_CHARS = 200_000
+
+TEXT_EXTS = {
+    ".txt", ".md", ".markdown", ".log", ".csv", ".tsv", ".json", ".xml",
+    ".yaml", ".yml", ".toml", ".ini", ".html", ".htm", ".js", ".ts",
+    ".py", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".sh", ".sql",
+}
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+
+
+def _ext(name: str) -> str:
+    if "." not in name:
+        return ""
+    return "." + name.rsplit(".", 1)[-1].lower()
+
+
+def _extract_pdf(data: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return "[PDF extraction requires pypdf. Run python -m pip install -e .]"
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        pages = []
+        for page in reader.pages:
+            try:
+                pages.append(page.extract_text() or "")
+            except Exception:
+                continue
+        return "\n\n".join(pages).strip()
+    except Exception as exc:
+        return f"[Failed to parse PDF: {exc}]"
+
+
+def _extract_docx(data: bytes) -> str:
+    try:
+        from docx import Document
+    except ImportError:
+        return "[DOCX extraction requires python-docx. Run python -m pip install -e .]"
+    try:
+        doc = Document(io.BytesIO(data))
+        return "\n".join(paragraph.text for paragraph in doc.paragraphs).strip()
+    except Exception as exc:
+        return f"[Failed to parse DOCX: {exc}]"
+
+
+def _extract_xlsx(data: bytes) -> str:
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        return "[XLSX extraction requires openpyxl. Run python -m pip install -e .]"
+    try:
+        workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        rows: List[str] = []
+        for sheet_name in workbook.sheetnames:
+            worksheet = workbook[sheet_name]
+            rows.append(f"## Sheet: {sheet_name}")
+            for row in worksheet.iter_rows(max_rows=200, values_only=True):
+                rows.append("\t".join(str(cell) if cell is not None else "" for cell in row))
+        return "\n".join(rows)
+    except Exception as exc:
+        return f"[Failed to parse XLSX: {exc}]"
+
+
+def _extract_zip(data: bytes) -> str:
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile as exc:
+        return f"[Invalid ZIP: {exc}]"
+
+    parts: List[str] = [f"## ZIP contents ({len(archive.namelist())} files)"]
+    for name in archive.namelist()[:50]:
+        if name.endswith("/"):
+            parts.append(f"- {name} (directory)")
+            continue
+        info = archive.getinfo(name)
+        if info.file_size > 1024 * 1024:
+            parts.append(f"- {name} ({info.file_size} bytes - skipped)")
+            continue
+        try:
+            inner = archive.read(name)
+        except Exception as exc:
+            parts.append(f"- {name} (read error: {exc})")
+            continue
+
+        ext = _ext(name)
+        parts.append(f"\n### {name}")
+        if ext in TEXT_EXTS:
+            parts.append(inner.decode("utf-8", errors="replace"))
+        elif ext == ".pdf":
+            parts.append(_extract_pdf(inner))
+        elif ext == ".docx":
+            parts.append(_extract_docx(inner))
+        else:
+            parts.append(f"[unsupported file type {ext}, {len(inner)} bytes]")
+    return "\n".join(parts)
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    name = file.filename or "uploaded"
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+        )
+
+    ext = _ext(name)
+    if ext in IMAGE_EXTS:
+        mime_map = {
+            ".png": "png",
+            ".jpg": "jpeg",
+            ".jpeg": "jpeg",
+            ".webp": "webp",
+            ".gif": "gif",
+            ".bmp": "bmp",
+        }
+        mime = mime_map.get(ext, "png")
+        encoded = base64.b64encode(data).decode("ascii")
+        return {
+            "kind": "image",
+            "filename": name,
+            "size": len(data),
+            "content": f"data:image/{mime};base64,{encoded}",
+        }
+
+    if ext == ".pdf":
+        text = _extract_pdf(data)
+    elif ext == ".docx":
+        text = _extract_docx(data)
+    elif ext in (".xlsx", ".xlsm"):
+        text = _extract_xlsx(data)
+    elif ext == ".zip":
+        text = _extract_zip(data)
+    elif ext in TEXT_EXTS or not ext:
+        text = data.decode("utf-8", errors="replace")
+    else:
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=415, detail=f"Unsupported file type: {ext or 'unknown'}")
+
+    if len(text) > MAX_TEXT_CHARS:
+        text = text[:MAX_TEXT_CHARS] + f"\n\n[... truncated, original was {len(text)} chars]"
+
+    return {
+        "kind": "text",
+        "filename": name,
+        "size": len(data),
+        "content": text,
+    }
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")

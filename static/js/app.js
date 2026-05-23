@@ -231,6 +231,9 @@ async function sendChat() {
     if (!message) return;
 
     input.value = '';
+    const attachmentPayload = window.buildChatPayload
+        ? window.buildChatPayload('chat', message)
+        : { prompt: message, imageDataUri: '' };
     addMessage('user', message);
 
     const model = document.getElementById('chat-model').value;
@@ -251,7 +254,7 @@ async function sendChat() {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, model, system_prompt: systemPrompt, temperature, stream: true, api_key: apiKey }),
+            body: JSON.stringify({ message: attachmentPayload.prompt, model, system_prompt: systemPrompt, temperature, stream: true, api_key: apiKey }),
         });
 
         if (!response.ok) {
@@ -277,6 +280,7 @@ async function sendChat() {
         }
 
         bubble.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        if (window.clearAttachments) window.clearAttachments('chat');
 
         const latency = Date.now() - startTime;
         document.getElementById('stat-latency').textContent = `${latency}ms`;
