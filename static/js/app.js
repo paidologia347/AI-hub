@@ -79,15 +79,34 @@ function showToast(message) {
 const PROVIDER_KEY_STORAGE = {
     dashscope: 'aihub.dashscopeApiKey',
     freemodel: 'aihub.freemodelApiKey',
+    nvidia: 'aihub.nvidiaApiKey',
 };
 
 const PROVIDER_KEY_INPUT = {
     dashscope: 'dashscope-key-input',
     freemodel: 'freemodel-key-input',
+    nvidia: 'nvidia-key-input',
+};
+
+const PROVIDER_LABEL = {
+    dashscope: 'DashScope',
+    freemodel: 'FreeModel',
+    nvidia: 'NVIDIA NIM',
+};
+
+const MODEL_PROVIDER = {
+    'gpt-5.5': 'freemodel',
+    'gpt-5.4': 'freemodel',
+    'gpt-5.4-mini': 'freemodel',
+    'gpt-5.3-codex': 'freemodel',
+    'meta/llama-3.3-70b-instruct': 'nvidia',
+    'meta/llama-3.1-70b-instruct': 'nvidia',
+    'nvidia/llama-3.1-nemotron-nano-8b-v1': 'nvidia',
+    'nvidia/llama-3.1-nemotron-51b-instruct': 'nvidia',
 };
 
 function providerForModel(model) {
-    return model && model.startsWith('gpt-') ? 'freemodel' : 'dashscope';
+    return MODEL_PROVIDER[model] || 'dashscope';
 }
 
 function getProviderKey(provider) {
@@ -113,17 +132,28 @@ function saveProviderKey(provider) {
     localStorage.setItem(PROVIDER_KEY_STORAGE[provider], key);
     input.value = '';
     refreshProviderKeyStatus();
-    showToast(`${provider === 'freemodel' ? 'FreeModel' : 'DashScope'} key saved`);
+    showToast(`${PROVIDER_LABEL[provider] || provider} key saved`);
 }
 
 async function pasteProviderKey(provider) {
     const input = document.getElementById(PROVIDER_KEY_INPUT[provider]);
     if (!input) return;
+    input.focus();
     try {
-        input.value = await navigator.clipboard.readText();
-        input.focus();
+        if (!navigator.clipboard || !window.isSecureContext) {
+            throw new Error('Clipboard API unavailable');
+        }
+        const text = await navigator.clipboard.readText();
+        if (!text.trim()) {
+            showToast('Clipboard is empty');
+            return;
+        }
+        input.value = text.trim();
+        saveProviderKey(provider);
     } catch {
-        showToast('Clipboard paste blocked by browser');
+        input.placeholder = 'Press Ctrl+V here, then Save';
+        input.select();
+        showToast('Tekan Ctrl+V di kolom key, lalu Save');
     }
 }
 
@@ -132,15 +162,34 @@ function clearProviderKey(provider) {
     const input = document.getElementById(PROVIDER_KEY_INPUT[provider]);
     if (input) input.value = '';
     refreshProviderKeyStatus();
-    showToast(`${provider === 'freemodel' ? 'FreeModel' : 'DashScope'} key cleared`);
+    showToast(`${PROVIDER_LABEL[provider] || provider} key cleared`);
 }
 
 function refreshProviderKeyStatus() {
     const status = document.getElementById('api-key-status');
     if (!status) return;
-    const dashscope = getProviderKey('dashscope') ? 'DashScope saved' : 'DashScope missing';
-    const freemodel = getProviderKey('freemodel') ? 'FreeModel saved' : 'FreeModel missing';
-    status.textContent = `${dashscope} / ${freemodel}`;
+    status.textContent = Object.keys(PROVIDER_KEY_INPUT)
+        .map(provider => `${PROVIDER_LABEL[provider] || provider} ${getProviderKey(provider) ? 'saved' : 'missing'}`)
+        .join(' / ');
+}
+
+function initProviderKeyInputs() {
+    Object.keys(PROVIDER_KEY_INPUT).forEach(provider => {
+        const input = document.getElementById(PROVIDER_KEY_INPUT[provider]);
+        if (!input) return;
+        input.addEventListener('paste', () => {
+            setTimeout(() => {
+                if (input.value.trim()) saveProviderKey(provider);
+            }, 0);
+        });
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveProviderKey(provider);
+            }
+        });
+    });
+    refreshProviderKeyStatus();
 }
 
 // ===== Chat =====
@@ -531,8 +580,26 @@ function copyMarketing() {
     showToast('Marketing copy copied!');
 }
 
+Object.assign(window, {
+    switchPage,
+    setPrompt,
+    sendChat,
+    enhancePrompt,
+    generateImage,
+    updateTTSVoices,
+    generateTTS,
+    generateContent,
+    copyContent,
+    updateMarketingTemplate,
+    generateMarketing,
+    copyMarketing,
+    saveProviderKey,
+    pasteProviderKey,
+    clearProviderKey,
+});
+
 // ===== Initialize =====
 updateTTSVoices();
 updateMarketingTemplate();
-refreshProviderKeyStatus();
+initProviderKeyInputs();
 addLog('AI Hub initialized');

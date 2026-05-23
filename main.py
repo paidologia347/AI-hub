@@ -18,6 +18,8 @@ DASHSCOPE_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 DASHSCOPE_NATIVE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
 FREEMODEL_API_KEY = os.getenv("FREEMODEL_API_KEY", "")
 FREEMODEL_BASE_URL = "https://api.freemodel.dev/v1"
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 TEXT_MODEL_PROVIDERS = {
     "qwen-plus": "dashscope",
@@ -32,16 +34,21 @@ TEXT_MODEL_PROVIDERS = {
     "gpt-5.4": "freemodel",
     "gpt-5.4-mini": "freemodel",
     "gpt-5.3-codex": "freemodel",
+    "meta/llama-3.3-70b-instruct": "nvidia",
+    "meta/llama-3.1-70b-instruct": "nvidia",
+    "nvidia/llama-3.1-nemotron-nano-8b-v1": "nvidia",
+    "nvidia/llama-3.1-nemotron-51b-instruct": "nvidia",
 }
 
 client: AsyncOpenAI | None = None
 freemodel_client: AsyncOpenAI | None = None
+nvidia_client: AsyncOpenAI | None = None
 http_client: httpx.AsyncClient | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global client, freemodel_client, http_client
+    global client, freemodel_client, nvidia_client, http_client
     client = AsyncOpenAI(
         base_url=DASHSCOPE_BASE_URL,
         api_key=DASHSCOPE_API_KEY,
@@ -49,6 +56,10 @@ async def lifespan(app: FastAPI):
     freemodel_client = AsyncOpenAI(
         base_url=FREEMODEL_BASE_URL,
         api_key=FREEMODEL_API_KEY,
+    )
+    nvidia_client = AsyncOpenAI(
+        base_url=NVIDIA_BASE_URL,
+        api_key=NVIDIA_API_KEY,
     )
     http_client = httpx.AsyncClient(timeout=120.0)
     yield
@@ -71,6 +82,10 @@ AVAILABLE_MODELS = {
         {"id": "gpt-5.4", "name": "GPT-5.4", "provider": "FreeModel"},
         {"id": "gpt-5.4-mini", "name": "GPT-5.4 Mini", "provider": "FreeModel"},
         {"id": "gpt-5.3-codex", "name": "GPT-5.3 Codex", "provider": "FreeModel"},
+        {"id": "meta/llama-3.3-70b-instruct", "name": "Llama 3.3 70B Instruct", "provider": "NVIDIA NIM"},
+        {"id": "meta/llama-3.1-70b-instruct", "name": "Llama 3.1 70B Instruct", "provider": "NVIDIA NIM"},
+        {"id": "nvidia/llama-3.1-nemotron-nano-8b-v1", "name": "Nemotron Nano 8B", "provider": "NVIDIA NIM"},
+        {"id": "nvidia/llama-3.1-nemotron-51b-instruct", "name": "Nemotron 51B Instruct", "provider": "NVIDIA NIM"},
     ],
     "image": [
         {"id": "wan2.6-t2i", "name": "Wan 2.6 Text-to-Image", "provider": "Alibaba Cloud"},
@@ -136,6 +151,19 @@ def get_text_client(model: str, api_key: str = "") -> AsyncOpenAI:
         if not freemodel_client:
             raise HTTPException(status_code=500, detail="FreeModel client not initialized")
         return freemodel_client
+
+    if provider == "nvidia":
+        key = api_key.strip() or NVIDIA_API_KEY
+        if not key:
+            raise HTTPException(
+                status_code=401,
+                detail="NVIDIA NIM API key is missing. Paste it in API Management or add NVIDIA_API_KEY to .env.",
+            )
+        if api_key.strip():
+            return AsyncOpenAI(base_url=NVIDIA_BASE_URL, api_key=key)
+        if not nvidia_client:
+            raise HTTPException(status_code=500, detail="NVIDIA NIM client not initialized")
+        return nvidia_client
 
     key = api_key.strip() or DASHSCOPE_API_KEY
     if not key:
