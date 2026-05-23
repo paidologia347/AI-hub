@@ -16,17 +16,39 @@ load_dotenv()
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 DASHSCOPE_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 DASHSCOPE_NATIVE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
+FREEMODEL_API_KEY = os.getenv("FREEMODEL_API_KEY", "")
+FREEMODEL_BASE_URL = "https://api.freemodel.dev/v1"
+
+TEXT_MODEL_PROVIDERS = {
+    "qwen-plus": "dashscope",
+    "qwen-max": "dashscope",
+    "qwen-turbo": "dashscope",
+    "qwen3-235b-a22b": "dashscope",
+    "qwen3-32b": "dashscope",
+    "qwen3-14b": "dashscope",
+    "qwq-plus": "dashscope",
+    "qwen3-coder-plus": "dashscope",
+    "gpt-5.5": "freemodel",
+    "gpt-5.4": "freemodel",
+    "gpt-5.4-mini": "freemodel",
+    "gpt-5.3-codex": "freemodel",
+}
 
 client: AsyncOpenAI | None = None
+freemodel_client: AsyncOpenAI | None = None
 http_client: httpx.AsyncClient | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global client, http_client
+    global client, freemodel_client, http_client
     client = AsyncOpenAI(
         base_url=DASHSCOPE_BASE_URL,
         api_key=DASHSCOPE_API_KEY,
+    )
+    freemodel_client = AsyncOpenAI(
+        base_url=FREEMODEL_BASE_URL,
+        api_key=FREEMODEL_API_KEY,
     )
     http_client = httpx.AsyncClient(timeout=120.0)
     yield
@@ -45,6 +67,10 @@ AVAILABLE_MODELS = {
         {"id": "qwen3-14b", "name": "Qwen3 14B", "provider": "Alibaba Cloud"},
         {"id": "qwq-plus", "name": "QwQ Plus (Reasoning)", "provider": "Alibaba Cloud"},
         {"id": "qwen3-coder-plus", "name": "Qwen3 Coder Plus", "provider": "Alibaba Cloud"},
+        {"id": "gpt-5.5", "name": "GPT-5.5", "provider": "FreeModel"},
+        {"id": "gpt-5.4", "name": "GPT-5.4", "provider": "FreeModel"},
+        {"id": "gpt-5.4-mini", "name": "GPT-5.4 Mini", "provider": "FreeModel"},
+        {"id": "gpt-5.3-codex", "name": "GPT-5.3 Codex", "provider": "FreeModel"},
     ],
     "image": [
         {"id": "wan2.6-t2i", "name": "Wan 2.6 Text-to-Image", "provider": "Alibaba Cloud"},
@@ -64,6 +90,7 @@ class ChatRequest(BaseModel):
     system_prompt: str = ""
     temperature: float = 0.7
     stream: bool = True
+    api_key: str = ""
 
 
 class ImageRequest(BaseModel):
@@ -71,12 +98,14 @@ class ImageRequest(BaseModel):
     model: str = "wan2.6-t2i"
     size: str = "1024x1024"
     quality: str = "standard"
+    api_key: str = ""
 
 
 class TTSRequest(BaseModel):
     text: str
     provider: str = "qwen3-tts-flash"
     voice: str = "Cherry"
+    api_key: str = ""
 
 
 class ContentRequest(BaseModel):
@@ -85,6 +114,7 @@ class ContentRequest(BaseModel):
     model: str = "qwen-plus"
     tone: str = "professional"
     language: str = "id"
+    api_key: str = ""
 
 
 @app.get("/api/models")
@@ -92,10 +122,47 @@ async def get_models():
     return AVAILABLE_MODELS
 
 
-@app.post("/api/chat")
-async def chat(req: ChatRequest):
+def get_text_client(model: str, api_key: str = "") -> AsyncOpenAI:
+    provider = TEXT_MODEL_PROVIDERS.get(model, "dashscope")
+    if provider == "freemodel":
+        key = api_key.strip() or FREEMODEL_API_KEY
+        if not key:
+            raise HTTPException(
+                status_code=401,
+                detail="FreeModel API key is missing. Paste it in API Management or add FREEMODEL_API_KEY to .env.",
+            )
+        if api_key.strip():
+            return AsyncOpenAI(base_url=FREEMODEL_BASE_URL, api_key=key)
+        if not freemodel_client:
+            raise HTTPException(status_code=500, detail="FreeModel client not initialized")
+        return freemodel_client
+
+    key = api_key.strip() or DASHSCOPE_API_KEY
+    if not key:
+        raise HTTPException(
+            status_code=401,
+            detail="DashScope API key is missing. Paste it in API Management or add DASHSCOPE_API_KEY to .env.",
+        )
+    if api_key.strip():
+        return AsyncOpenAI(base_url=DASHSCOPE_BASE_URL, api_key=key)
     if not client:
         raise HTTPException(status_code=500, detail="AI client not initialized")
+    return client
+
+
+def get_dashscope_key(api_key: str = "") -> str:
+    key = api_key.strip() or DASHSCOPE_API_KEY
+    if not key:
+        raise HTTPException(
+            status_code=401,
+            detail="DashScope API key is missing. Paste it in API Management or add DASHSCOPE_API_KEY to .env.",
+        )
+    return key
+
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest):
+    selected_client = get_text_client(req.model, req.api_key)
 
     messages = []
     if req.system_prompt:
@@ -104,7 +171,7 @@ async def chat(req: ChatRequest):
 
     if req.stream:
         async def generate():
-            stream = await client.chat.completions.create(
+            stream = await selected_client.chat.completions.create(
                 model=req.model,
                 messages=messages,
                 temperature=req.temperature,
@@ -118,7 +185,7 @@ async def chat(req: ChatRequest):
 
         return StreamingResponse(generate(), media_type="text/event-stream")
 
-    response = await client.chat.completions.create(
+    response = await selected_client.chat.completions.create(
         model=req.model,
         messages=messages,
         temperature=req.temperature,
@@ -132,8 +199,9 @@ async def generate_image(req: ImageRequest):
         raise HTTPException(status_code=500, detail="HTTP client not initialized")
 
     url = f"{DASHSCOPE_NATIVE_URL}/services/aigc/multimodal-generation/generation"
+    dashscope_key = get_dashscope_key(req.api_key)
     headers = {
-        "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
+        "Authorization": f"Bearer {dashscope_key}",
         "Content-Type": "application/json",
     }
 
@@ -180,8 +248,9 @@ async def text_to_speech(req: TTSRequest):
         raise HTTPException(status_code=500, detail="HTTP client not initialized")
 
     url = f"{DASHSCOPE_NATIVE_URL}/services/aigc/multimodal-generation/generation"
+    dashscope_key = get_dashscope_key(req.api_key)
     headers = {
-        "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
+        "Authorization": f"Bearer {dashscope_key}",
         "Content-Type": "application/json",
     }
 
@@ -220,8 +289,7 @@ async def text_to_speech(req: TTSRequest):
 
 @app.post("/api/content/generate")
 async def generate_content(req: ContentRequest):
-    if not client:
-        raise HTTPException(status_code=500, detail="AI client not initialized")
+    selected_client = get_text_client(req.model, req.api_key)
 
     prompts = {
         "blog": f"Write a comprehensive blog post about: {req.topic}. Tone: {req.tone}. Language: {req.language}. Include a title, introduction, main sections with subheadings, and conclusion. Use markdown formatting.",
@@ -236,7 +304,7 @@ async def generate_content(req: ContentRequest):
     user_prompt = prompts.get(req.content_type, prompts["blog"])
 
     async def generate():
-        stream = await client.chat.completions.create(
+        stream = await selected_client.chat.completions.create(
             model=req.model,
             messages=[
                 {"role": "system", "content": system_prompt},

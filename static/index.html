@@ -99,6 +99,10 @@
                                 <option value="qwen3-14b">Qwen3 14B</option>
                                 <option value="qwq-plus">QwQ Plus (Reasoning)</option>
                                 <option value="qwen3-coder-plus">Qwen3 Coder Plus</option>
+                                <option value="gpt-5.5">FreeModel GPT-5.5</option>
+                                <option value="gpt-5.4">FreeModel GPT-5.4</option>
+                                <option value="gpt-5.4-mini">FreeModel GPT-5.4 Mini</option>
+                                <option value="gpt-5.3-codex">FreeModel GPT-5.3 Codex</option>
                             </select>
                         </div>
                         <div class="config-group">
@@ -395,6 +399,10 @@
                             <div class="model-row"><span>Qwen Turbo</span><span class="tag text-tag">Text</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>QwQ Plus</span><span class="tag reason-tag">Reasoning</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>Qwen3 Coder Plus</span><span class="tag code-tag">Code</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>GPT-5.5</span><span class="tag text-tag">Text</span><span>FreeModel</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>GPT-5.4</span><span class="tag text-tag">Text</span><span>FreeModel</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>GPT-5.4 Mini</span><span class="tag text-tag">Text</span><span>FreeModel</span><span class="status-badge active">Active</span></div>
+                            <div class="model-row"><span>GPT-5.3 Codex</span><span class="tag code-tag">Code</span><span>FreeModel</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>Wan 2.6 T2I</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>Wan 2.7 Image Pro</span><span class="tag img-tag">Image</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
                             <div class="model-row"><span>Qwen3 TTS Flash</span><span class="tag tts-tag">TTS</span><span>Alibaba Cloud</span><span class="status-badge active">Active</span></div>
@@ -405,10 +413,11 @@
                     <!-- API Config -->
                     <div class="api-section">
                         <h3 class="panel-title">API Configuration</h3>
+                        <p class="api-desc">Paste provider API keys here. Keys are stored only in this browser and sent with requests to the local AI Hub server.</p>
                         <div class="api-config-grid">
                             <div class="api-config-card">
                                 <span class="config-label">PROVIDER</span>
-                                <span class="config-display">Alibaba Cloud Model Studio</span>
+                                <span class="config-display">Alibaba Cloud Model Studio + FreeModel</span>
                             </div>
                             <div class="api-config-card">
                                 <span class="config-label">REGION</span>
@@ -416,11 +425,35 @@
                             </div>
                             <div class="api-config-card">
                                 <span class="config-label">BASE URL</span>
-                                <span class="config-display mono">dashscope-intl.aliyuncs.com</span>
+                                <span class="config-display mono">dashscope-intl.aliyuncs.com / api.freemodel.dev</span>
                             </div>
                             <div class="api-config-card">
-                                <span class="config-label">API KEY</span>
-                                <span class="config-display mono">sk-••••••••••••</span>
+                                <span class="config-label">KEY STATUS</span>
+                                <span class="config-display mono" id="api-key-status">Not configured</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="api-section">
+                        <h3 class="panel-title">Provider Keys</h3>
+                        <div class="api-config-grid">
+                            <div class="api-config-card">
+                                <span class="config-label">DASHSCOPE API KEY</span>
+                                <input type="password" id="dashscope-key-input" class="nexus-input" placeholder="Paste DashScope API key">
+                                <div class="api-key-actions">
+                                    <button class="copy-btn" onclick="saveProviderKey('dashscope')">Save</button>
+                                    <button class="copy-btn" onclick="pasteProviderKey('dashscope')">Paste</button>
+                                    <button class="copy-btn" onclick="clearProviderKey('dashscope')">Clear</button>
+                                </div>
+                            </div>
+                            <div class="api-config-card">
+                                <span class="config-label">FREEMODEL API KEY</span>
+                                <input type="password" id="freemodel-key-input" class="nexus-input" placeholder="Paste FreeModel API key">
+                                <div class="api-key-actions">
+                                    <button class="copy-btn" onclick="saveProviderKey('freemodel')">Save</button>
+                                    <button class="copy-btn" onclick="pasteProviderKey('freemodel')">Paste</button>
+                                    <button class="copy-btn" onclick="clearProviderKey('freemodel')">Clear</button>
+                                </div>
                             </div>
                         </div>
                     </div>

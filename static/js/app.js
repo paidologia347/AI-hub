@@ -75,6 +75,74 @@ function showToast(message) {
     setTimeout(() => toast.remove(), 2000);
 }
 
+// ===== Provider Keys =====
+const PROVIDER_KEY_STORAGE = {
+    dashscope: 'aihub.dashscopeApiKey',
+    freemodel: 'aihub.freemodelApiKey',
+};
+
+const PROVIDER_KEY_INPUT = {
+    dashscope: 'dashscope-key-input',
+    freemodel: 'freemodel-key-input',
+};
+
+function providerForModel(model) {
+    return model && model.startsWith('gpt-') ? 'freemodel' : 'dashscope';
+}
+
+function getProviderKey(provider) {
+    try {
+        return localStorage.getItem(PROVIDER_KEY_STORAGE[provider]) || '';
+    } catch {
+        return '';
+    }
+}
+
+function getSelectedModelApiKey(model) {
+    return getProviderKey(providerForModel(model));
+}
+
+function saveProviderKey(provider) {
+    const input = document.getElementById(PROVIDER_KEY_INPUT[provider]);
+    if (!input) return;
+    const key = input.value.trim();
+    if (!key) {
+        showToast('Paste an API key first');
+        return;
+    }
+    localStorage.setItem(PROVIDER_KEY_STORAGE[provider], key);
+    input.value = '';
+    refreshProviderKeyStatus();
+    showToast(`${provider === 'freemodel' ? 'FreeModel' : 'DashScope'} key saved`);
+}
+
+async function pasteProviderKey(provider) {
+    const input = document.getElementById(PROVIDER_KEY_INPUT[provider]);
+    if (!input) return;
+    try {
+        input.value = await navigator.clipboard.readText();
+        input.focus();
+    } catch {
+        showToast('Clipboard paste blocked by browser');
+    }
+}
+
+function clearProviderKey(provider) {
+    localStorage.removeItem(PROVIDER_KEY_STORAGE[provider]);
+    const input = document.getElementById(PROVIDER_KEY_INPUT[provider]);
+    if (input) input.value = '';
+    refreshProviderKeyStatus();
+    showToast(`${provider === 'freemodel' ? 'FreeModel' : 'DashScope'} key cleared`);
+}
+
+function refreshProviderKeyStatus() {
+    const status = document.getElementById('api-key-status');
+    if (!status) return;
+    const dashscope = getProviderKey('dashscope') ? 'DashScope saved' : 'DashScope missing';
+    const freemodel = getProviderKey('freemodel') ? 'FreeModel saved' : 'FreeModel missing';
+    status.textContent = `${dashscope} / ${freemodel}`;
+}
+
 // ===== Chat =====
 let isStreaming = false;
 
@@ -119,6 +187,7 @@ async function sendChat() {
     const model = document.getElementById('chat-model').value;
     const systemPrompt = document.getElementById('system-prompt').value;
     const temperature = parseFloat(document.getElementById('chat-temp').value);
+    const apiKey = getSelectedModelApiKey(model);
 
     const msgDiv = addMessage('assistant', '<span style="opacity:0.4">Generating...</span>');
     const bubble = msgDiv.querySelector('.msg-bubble');
@@ -133,7 +202,7 @@ async function sendChat() {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, model, system_prompt: systemPrompt, temperature, stream: true }),
+            body: JSON.stringify({ message, model, system_prompt: systemPrompt, temperature, stream: true, api_key: apiKey }),
         });
 
         if (!response.ok) {
@@ -207,6 +276,7 @@ async function generateTTS() {
     const provider = document.getElementById('tts-provider').value;
     const voice = document.getElementById('tts-voice').value;
     const btn = document.getElementById('tts-btn');
+    const apiKey = getProviderKey('dashscope');
 
     btn.disabled = true;
     btn.innerHTML = '<span>Generating...</span>';
@@ -216,7 +286,7 @@ async function generateTTS() {
         const response = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, provider, voice }),
+            body: JSON.stringify({ text, provider, voice, api_key: apiKey }),
         });
 
         if (!response.ok) {
@@ -260,10 +330,12 @@ async function generateContent() {
     addLog(`Content request: ${contentType}`);
 
     try {
+        const model = document.getElementById('chat-model').value;
+        const apiKey = getSelectedModelApiKey(model);
         const response = await fetch('/api/content/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic, content_type: contentType, tone, language }),
+            body: JSON.stringify({ topic, content_type: contentType, tone, language, model, api_key: apiKey }),
         });
 
         if (!response.ok) {
@@ -313,6 +385,7 @@ async function generateImage() {
     const model = document.getElementById('img-model').value;
     const size = document.getElementById('img-size').value;
     const btn = document.getElementById('img-btn');
+    const apiKey = getProviderKey('dashscope');
 
     btn.disabled = true;
     btn.innerHTML = '<span>Generating...</span>';
@@ -322,7 +395,7 @@ async function generateImage() {
         const response = await fetch('/api/image/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, model, size }),
+            body: JSON.stringify({ prompt, model, size, api_key: apiKey }),
         });
 
         if (!response.ok) {
@@ -406,15 +479,18 @@ async function generateMarketing() {
     addLog(`Marketing request: ${template}`);
 
     try {
+        const model = document.getElementById('chat-model').value;
+        const apiKey = getSelectedModelApiKey(model);
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: prompts[template],
-                model: 'qwen-plus',
+                model,
                 system_prompt: 'You are an expert marketing copywriter. Create professional, persuasive marketing content. Use markdown formatting.',
                 temperature: 0.8,
                 stream: true,
+                api_key: apiKey,
             }),
         });
 
@@ -458,4 +534,5 @@ function copyMarketing() {
 // ===== Initialize =====
 updateTTSVoices();
 updateMarketingTemplate();
+refreshProviderKeyStatus();
 addLog('AI Hub initialized');
