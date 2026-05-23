@@ -526,15 +526,13 @@ async def upload_file(file: UploadFile = File(...)):
 if os.path.isdir(FRONTEND_DIST):
     app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 @app.get("/")
 async def root():
     frontend_index = os.path.join(FRONTEND_DIST, "index.html")
     if os.path.exists(frontend_index):
         return FileResponse(frontend_index)
-    return FileResponse("static/index.html")
+    raise HTTPException(status_code=503, detail="Frontend build is missing. Run npm run build in frontend.")
 
 
 @app.get("/{full_path:path}")
@@ -544,4 +542,4 @@ async def spa_fallback(full_path: str):
     frontend_index = os.path.join(FRONTEND_DIST, "index.html")
     if os.path.exists(frontend_index):
         return FileResponse(frontend_index)
-    return FileResponse("static/index.html")
+    raise HTTPException(status_code=503, detail="Frontend build is missing. Run npm run build in frontend.")
